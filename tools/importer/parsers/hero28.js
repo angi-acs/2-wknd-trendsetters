@@ -1,50 +1,54 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Define header row
+  // 1. Table header row
   const headerRow = ['Hero (hero28)'];
 
-  // Find the .w-layout-grid (main two-column layout)
+  // 2. Background image row
+  // Find the first <img> that is likely the background image
+  let bgImg = null;
   const grid = element.querySelector('.w-layout-grid');
-  if (!grid) return;
-  const gridChildren = Array.from(grid.children);
-
-  // Extract image from the first grid child that contains an <img>
-  let imageEl = null;
-  for (const child of gridChildren) {
-    const img = child.querySelector('img');
-    if (img) {
-      imageEl = img;
-      break;
+  if (grid) {
+    // The first child div of grid has the background image
+    const gridChildren = Array.from(grid.children);
+    if (gridChildren.length > 0) {
+      const bgDiv = gridChildren[0];
+      bgImg = bgDiv.querySelector('img');
     }
   }
-  const backgroundRow = [imageEl ? imageEl : ''];
+  const bgImgRow = [bgImg ? bgImg : ''];
 
-  // Extract the hero text content from grid children containing a heading
-  let textBlock = null;
-  for (const child of gridChildren) {
-    if (child.querySelector('h1, h2, h3, h4, h5, h6')) {
-      textBlock = child;
-      break;
+  // 3. Content row (heading, subheading, CTA)
+  let contentCell = [];
+  if (grid) {
+    // The second child div of grid has the text content
+    const gridChildren = Array.from(grid.children);
+    if (gridChildren.length > 1) {
+      const contentDiv = gridChildren[1];
+      // Find heading(s)
+      const headings = contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      headings.forEach(h => contentCell.push(h));
+      // Find CTA button(s)
+      const buttonGroup = contentDiv.querySelector('.button-group');
+      if (buttonGroup) {
+        // add each child (if any) of button group
+        if (buttonGroup.children.length > 0) {
+          contentCell.push(...buttonGroup.children);
+        }
+      }
     }
   }
-  // Compose the text row by collecting all children with visible text (e.g., headings, button group, etc.)
-  let textRowContent = [];
-  if (textBlock) {
-    // Only grab elements with text or content
-    const elements = Array.from(textBlock.children).filter(el => {
-      if (el.tagName.match(/^H[1-6]$/)) return !!el.textContent.trim();
-      if (el.tagName === 'DIV' && el.classList.contains('button-group')) return el.children.length > 0;
-      if (el.tagName === 'P') return !!el.textContent.trim();
-      return false;
-    });
-    // If nothing matched (e.g., empty button group), just include all
-    if (elements.length === 0) textRowContent = Array.from(textBlock.children);
-    else textRowContent = elements;
+  // Fallback if nothing found
+  if (contentCell.length === 0) {
+    contentCell = [''];
   }
-  const textRow = [textRowContent.length === 1 ? textRowContent[0] : textRowContent];
+  const contentRow = [contentCell];
 
-  // Compose the table and replace the element
-  const rows = [headerRow, backgroundRow, textRow];
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  // Compose the table
+  const cells = [
+    headerRow,
+    bgImgRow,
+    contentRow
+  ];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

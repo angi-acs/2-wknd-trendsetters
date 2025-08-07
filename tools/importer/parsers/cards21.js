@@ -1,43 +1,41 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header as specified
   const headerRow = ['Cards (cards21)'];
-  const rows = [];
-  // Find each card container
-  const cardBodies = element.querySelectorAll('.card-body');
-  cardBodies.forEach(cardBody => {
-    // Find the image in the card
-    const img = cardBody.querySelector('img');
-    // Find the heading/title (allow for different heading tags)
-    const heading = cardBody.querySelector('.h4-heading, h1, h2, h3, h4, h5, h6');
-    // Collect all nodes after the heading as description (if any)
-    let textCell = [];
-    if (heading) {
-      textCell.push(heading);
-      let foundHeading = false;
-      for (const node of cardBody.childNodes) {
-        if (!foundHeading) {
-          if (node === heading) foundHeading = true;
-          continue;
-        }
-        if (node.nodeType === 1 && node.tagName === 'IMG') continue; // skip image
-        if ((node.nodeType === 3 && node.textContent.trim()) || (node.nodeType === 1 && node.textContent.trim())) {
-          textCell.push(node);
-        }
-      }
-    } else {
-      // fallback: get all non-image content
-      Array.from(cardBody.childNodes).forEach(node => {
-        if (node.nodeType === 1 && node.tagName === 'IMG') return;
-        if ((node.nodeType === 3 && node.textContent.trim()) || (node.nodeType === 1 && node.textContent.trim())) {
-          textCell.push(node);
-        }
-      });
+  const cardBody = element.querySelector('.card-body');
+  if (!cardBody) return;
+
+  // Extract image
+  const img = cardBody.querySelector('img');
+  // Extract title (first heading or .h4-heading)
+  const titleEl = cardBody.querySelector('.h4-heading, h1, h2, h3, h4, h5, h6');
+
+  // Extract description: all text (and elements) except title and image
+  let descParts = [];
+  for (const node of cardBody.childNodes) {
+    if (node === img || node === titleEl) continue;
+    if (node.nodeType === Node.TEXT_NODE) {
+      // Only non-empty text
+      if (node.textContent.trim()) descParts.push(document.createTextNode(node.textContent.trim()));
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      descParts.push(node);
     }
-    if (textCell.length === 0) textCell = [''];
-    rows.push([img, textCell]);
-  });
-  const tableCells = [headerRow, ...rows];
-  const block = WebImporter.DOMUtils.createTable(tableCells, document);
-  element.replaceWith(block);
+  }
+
+  // If any description, create a <div> for it
+  let descEl = null;
+  if (descParts.length > 0) {
+    descEl = document.createElement('div');
+    descParts.forEach(part => descEl.appendChild(part));
+  }
+
+  // Compose [title, description] in second cell if both exist, else just one
+  let textCell = [];
+  if (titleEl) textCell.push(titleEl);
+  if (descEl) textCell.push(descEl);
+  if (textCell.length === 0) textCell = '';
+  else if (textCell.length === 1) textCell = textCell[0];
+
+  const rows = [headerRow, [img, textCell]];
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(table);
 }

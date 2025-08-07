@@ -1,19 +1,24 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid container, which contains the columns
-  const grid = element.querySelector('.w-layout-grid');
+  // Find the grid for columns content
+  const grid = element.querySelector('.grid-layout');
   if (!grid) return;
-  // Get all direct children of the grid (these are the columns)
-  const columns = Array.from(grid.children);
-  if (columns.length === 0) return;
+  const children = Array.from(grid.children);
+  if (children.length === 0) return;
 
-  // Header row must be a single cell (per requirements and example)
+  // Compose the columns for the block: column 1 = heading + (optionally others), column 2 = all remaining content
+  // For this HTML, the first column is the heading, the second column is the p + button.
+  const heading = children.find(el => el.tagName === 'H2');
+  const otherContent = children.filter(el => el !== heading);
+
+  // Instead of splitting exactly by HTML structure, group all content after the heading into a single cell
   const headerRow = ['Columns (columns14)'];
-  // Second row: each column in its own cell
-  const contentRow = columns;
+  const columnsRow = [heading, otherContent];
 
-  // Create the block table with exactly two rows: header (1 cell), content (n cells)
-  const table = WebImporter.DOMUtils.createTable([headerRow, contentRow], document);
-  // Replace the original element
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    columnsRow
+  ], document);
+
   element.replaceWith(table);
 }

@@ -1,45 +1,49 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header must match the block name exactly
+  // 1. Header Row
   const headerRow = ['Hero (hero39)'];
 
-  // 2nd row: Background image (if present)
-  // Find the first <img> in the hero, which is the background/decorative image
-  const bgImg = element.querySelector('img');
-  const imgRow = [bgImg || ''];
-
-  // 3rd row: Content (Heading, subheading, CTA)
-  // Find the grid columns: usually 2. The 2nd column has the content text & CTA
-  const gridDivs = element.querySelectorAll(':scope > div > div');
-  let contentCell = [];
-  if (gridDivs.length > 1) {
-    // Find the nested grid for content
-    const contentGrid = gridDivs[1].querySelector('.w-layout-grid');
-    if (contentGrid) {
-      // Heading
-      const heading = contentGrid.querySelector('h1, h2, h3, h4, h5, h6');
-      if (heading) contentCell.push(heading);
-      // Large paragraph (subheading)
-      const para = contentGrid.querySelector('p');
-      if (para) contentCell.push(para);
-      // CTA (usually a button link)
-      const button = contentGrid.querySelector('a, button');
-      if (button) contentCell.push(button);
-    } else {
-      // fallback: push all children if the structure changes
-      contentCell = Array.from(gridDivs[1].children);
+  // 2. Background image row
+  // Source structure: header > div.grid-layout > div (image) + div (content)
+  // Find the grid-layout
+  const gridLayout = element.querySelector(':scope > .w-layout-grid.grid-layout');
+  let bgImg = null;
+  if (gridLayout) {
+    // The first child grid contains the image
+    const gridKids = gridLayout.querySelectorAll(':scope > div');
+    if (gridKids.length > 0) {
+      bgImg = gridKids[0].querySelector('img');
     }
   }
-  // Fallback if no content found
-  if (!contentCell.length) contentCell = [''];
-  const contentRow = [contentCell];
 
-  // Compose the table
+  // 3. Content row: Heading, Paragraph, CTA (all as existing elements)
+  let contentCell = [];
+  if (gridLayout) {
+    const gridKids = gridLayout.querySelectorAll(':scope > div');
+    if (gridKids.length > 1) {
+      const textBlock = gridKids[1];
+      // Find h1
+      const h1 = textBlock.querySelector('h1');
+      if (h1) contentCell.push(h1);
+      // Find large paragraph
+      const para = textBlock.querySelector('p');
+      if (para) contentCell.push(para);
+      // Find CTA button (first <a> in .button-group)
+      const buttonGroup = textBlock.querySelector('.button-group');
+      if (buttonGroup) {
+        const cta = buttonGroup.querySelector('a');
+        if (cta) contentCell.push(cta);
+      }
+    }
+  }
+
+  // If none found, push empty string for robustness
   const cells = [
     headerRow,
-    imgRow,
-    contentRow,
+    [bgImg || ''],
+    [contentCell.length ? contentCell : '']
   ];
+
   const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

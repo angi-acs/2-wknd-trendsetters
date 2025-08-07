@@ -1,25 +1,24 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header row
+  // Header row as specified
   const headerRow = ['Cards (cards17)'];
-
-  // Each direct child div is a card, each with an <img>
-  const cardDivs = element.querySelectorAll(':scope > div');
-  const rows = [];
-
-  cardDivs.forEach(cardDiv => {
+  // Get all direct card containers
+  const cards = Array.from(element.querySelectorAll(':scope > div'));
+  const rows = cards.map(cardDiv => {
+    // First cell: image (first img found)
     const img = cardDiv.querySelector('img');
-    // Only add row if an image exists
-    if (img) {
-      // For this HTML, there is no text content per card, so second cell is blank
-      rows.push([img, '']);
+    // Second cell: gather any non-img content (future-proof for text, CTA, etc)
+    const nonImgNodes = Array.from(cardDiv.childNodes).filter(node => {
+      return !(node.nodeType === 1 && node.tagName.toLowerCase() === 'img');
+    });
+    // If no extra non-img nodes, return empty string; otherwise, use all as array
+    let textCell = '';
+    if (nonImgNodes.length > 0) {
+      textCell = nonImgNodes;
     }
+    return [img, textCell];
   });
-
-  // Compose table and replace original element
-  const table = WebImporter.DOMUtils.createTable([
-    headerRow,
-    ...rows
-  ], document);
+  const cells = [headerRow, ...rows];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

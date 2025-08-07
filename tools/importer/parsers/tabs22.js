@@ -1,41 +1,46 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // The block name header row must be a single-cell row: ['Tabs']
-  const headerRow = ['Tabs'];
-  
-  // Get the tab menu and all the tab links (labels)
+  // Find tab menu containing tab labels
   const tabMenu = element.querySelector('.w-tab-menu');
   const tabLinks = tabMenu ? Array.from(tabMenu.children) : [];
-  // Get all tab panes (tab content)
+
+  // Extract tab labels from links (try to get the inner div text if present)
+  const tabLabels = tabLinks.map(link => {
+    const txtEl = link.querySelector('div');
+    return txtEl ? txtEl.textContent.trim() : link.textContent.trim();
+  });
+
+  // Find tab content container
   const tabContent = element.querySelector('.w-tab-content');
+  // Each child is a tab pane
   const tabPanes = tabContent ? Array.from(tabContent.children) : [];
 
-  // Compose each row as [tabLabel, tabContentElem]
-  const rows = tabLinks.map(tabLink => {
-    // The tab label text is always from the inner div, or fallback to textContent
-    let label = '';
-    const labelDiv = tabLink.querySelector('div');
-    if (labelDiv) {
-      label = labelDiv.textContent.trim();
-    } else {
-      label = tabLink.textContent.trim();
-    }
-    // Find content pane with the same data-w-tab attribute
-    const tabName = tabLink.getAttribute('data-w-tab');
-    const pane = tabPanes.find(p => p.getAttribute('data-w-tab') === tabName);
-    let contentElem = null;
+  // Create header row as required
+  const rows = [['Tabs']];
+
+  // Add a row for each tab: [tabLabel, tabContent]
+  for (let i = 0; i < Math.max(tabLabels.length, tabPanes.length); i++) {
+    const tabLabel = tabLabels[i] || '';
+    let contentCell = '';
+    // Find the pane for this tab
+    const pane = tabPanes[i];
     if (pane) {
-      // Use the main grid inside the pane if available
-      const grid = pane.querySelector('.w-layout-grid, .grid-layout');
-      contentElem = grid ? grid : pane;
-    } else {
-      // If no pane, create empty cell
-      contentElem = document.createElement('div');
+      // Each pane usually has a single grid container for content
+      // We want to preserve all of the pane's direct children
+      // If there is only one direct child, use that, otherwise use all
+      const paneChildren = Array.from(pane.children);
+      if (paneChildren.length === 1) {
+        contentCell = paneChildren[0];
+      } else if (paneChildren.length > 1) {
+        contentCell = paneChildren;
+      } else {
+        contentCell = '';
+      }
     }
-    return [label, contentElem];
-  });
-  // The table is: headerRow (one cell), then a row for each tab (label, content)
-  const tableRows = [headerRow, ...rows];
-  const table = WebImporter.DOMUtils.createTable(tableRows, document);
+    rows.push([tabLabel, contentCell]);
+  }
+
+  // Create and replace
+  const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

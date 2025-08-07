@@ -1,20 +1,26 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid that represents the columns
+  // Find the grid that contains the columns
   const grid = element.querySelector('.grid-layout');
   if (!grid) return;
-  // Get all immediate children (each column)
+  // Get the immediate children of the grid (should be columns)
   const columns = Array.from(grid.children);
-
-  // Compose the header row - exactly one cell, matching instructions
+  // Find the left column (the div with text and button)
+  // and the right column (the image)
+  let leftCol = null;
+  let rightCol = null;
+  columns.forEach((col) => {
+    if (col.tagName === 'DIV' && !leftCol) leftCol = col;
+    if (col.tagName === 'IMG' && !rightCol) rightCol = col;
+  });
+  // Ensure both columns exist
+  if (!leftCol || !rightCol) return;
+  // The header must match exactly
   const headerRow = ['Columns (columns27)'];
-
-  // Compose the content row with all columns (each child of grid)
-  const contentRow = columns.map(col => col);
-
-  // Only create table if at least one column exists
-  if (contentRow.length === 0) return;
-  const cells = [headerRow, contentRow];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+  const contentRow = [leftCol, rightCol];
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    contentRow
+  ], document);
   element.replaceWith(table);
 }

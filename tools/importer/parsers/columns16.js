@@ -1,28 +1,31 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
   // Find the grid containing the columns
-  const grid = element.querySelector('.w-layout-grid.grid-layout');
+  const grid = element.querySelector('.w-layout-grid');
   if (!grid) return;
 
-  // Get all immediate children of the grid (these are the column wrappers)
+  // Each direct child of the grid is a column
   const columnDivs = Array.from(grid.children);
 
-  // For each column, collect all content (not just img, but ALL block content)
-  // This ensures that mixed text+image columns will be handled
-  const cells = columnDivs.map(col => {
-    // Get the inner block that holds the actual column content (usually the first child)
-    // If there is only one main child, use it; otherwise, gather all children
-    if (col.children.length === 1) {
-      return col.firstElementChild;
+  // For each column, extract its entire content (not just the image)
+  // This is more robust for future variations
+  const columnCells = columnDivs.map(colDiv => {
+    // If the column itself is a container, collect its children as content
+    // If only one child, just return that element; else, return an array of its children
+    const children = Array.from(colDiv.childNodes).filter(n => n.nodeType === Node.ELEMENT_NODE || (n.nodeType === Node.TEXT_NODE && n.textContent.trim()));
+    if (children.length === 1) {
+      return children[0];
+    } else if (children.length > 1) {
+      return children;
+    } else {
+      return '';
     }
-    // If more than one content block, return an array of all children
-    return Array.from(col.children);
   });
 
-  // Compose table rows to match the single header and single row of columns
+  // Create the table rows: header is one cell, then each column in the second row is a cell
   const tableRows = [
     ['Columns (columns16)'],
-    cells
+    columnCells
   ];
 
   const table = WebImporter.DOMUtils.createTable(tableRows, document);

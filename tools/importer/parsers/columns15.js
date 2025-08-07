@@ -1,22 +1,33 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the main grid with columns
+  // Find the main container (should contain the grid layout)
   const container = element.querySelector('.container');
   if (!container) return;
+
+  // Find the grid layout for the main columns
   const grid = container.querySelector('.w-layout-grid');
   if (!grid) return;
-  const gridChildren = Array.from(grid.children).filter(Boolean);
-  // Only use the first two children as columns
-  const col1 = gridChildren[0] || document.createElement('div');
-  const col2 = gridChildren[1] || document.createElement('div');
-  // Header row is exactly one column
-  const header = ['Columns (columns15)'];
-  // Content row: one cell per column
-  const row = [col1, col2];
-  // Create the table
-  const table = WebImporter.DOMUtils.createTable([
-    header,
-    row
-  ], document);
+
+  // Find all direct children of the grid (these are our columns)
+  const gridChildren = Array.from(grid.children);
+
+  // We expect the left column to have the text content, the right the image
+  // Find the left (text) column by presence of an h1
+  let leftCol = gridChildren.find(child => child.querySelector('h1'));
+  // Find the right (image) column by presence of an img
+  let rightCol = gridChildren.find(child => child.querySelector('img'));
+
+  // If for some reason, only one found, skip
+  if (!leftCol || !rightCol) return;
+
+  // Reference the actual elements for the cells
+  const headerRow = ['Columns (columns15)'];
+  const columnsRow = [leftCol, rightCol];
+
+  // Build the table for the Columns block
+  const cells = [headerRow, columnsRow];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+
+  // Replace the original element with the block table
   element.replaceWith(table);
 }

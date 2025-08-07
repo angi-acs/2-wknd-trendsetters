@@ -1,40 +1,47 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header as per spec
+  // Header row for the block
   const headerRow = ['Cards (cards33)'];
-  const rows = [headerRow];
 
-  // Select all immediate child <a> elements (each is a card)
-  const cardLinks = element.querySelectorAll(':scope > a');
+  // Find all card anchor elements (each card is an <a>)
+  const cards = Array.from(element.querySelectorAll(':scope > a'));
 
-  cardLinks.forEach(cardLink => {
-    // Find the image inside the card (if any)
-    const img = cardLink.querySelector('img');
+  const rows = cards.map(card => {
+    // First cell: image (mandatory)
+    const img = card.querySelector('img');
 
-    // Find the main content div after the image
-    // In this HTML, it is the only <div> that is a sibling of the image
-    let contentDiv = null;
-    const outerGrid = cardLink.querySelector(':scope > div');
-    if (outerGrid) {
-      // Get all children of the grid
-      const children = Array.from(outerGrid.children);
-      // Remove the image from the children
-      const nonImgChildren = children.filter(child => child !== img);
-      // Wrap the non-image children into a div (preserve their structure and reference)
-      contentDiv = document.createElement('div');
-      nonImgChildren.forEach(child => contentDiv.appendChild(child));
+    // Second cell: text content (mandatory)
+    // Find the container that holds the text (includes tag, read time, h3, p, CTA)
+    // It's the innermost div containing the h3
+    const heading = card.querySelector('h3, .h4-heading');
+    let textDiv = heading && heading.closest('div');
+    // Fallback to the main inner <div> after <img> if needed
+    if (!textDiv) {
+      const divs = card.querySelectorAll('div');
+      textDiv = divs[divs.length - 1];
     }
-    // Fallback if contentDiv couldn't be found
-    if (!contentDiv) {
-      contentDiv = document.createElement('div');
+    // Exclude the image if it's inside textDiv by mistake
+    let cellContent;
+    if (textDiv) {
+      // Remove the image from textDiv if present
+      const imgs = textDiv.querySelectorAll('img');
+      imgs.forEach(i => i.remove());
+      // Use all children, preserving structure
+      cellContent = Array.from(textDiv.childNodes).filter(node => {
+        // Remove empty text nodes
+        return node.nodeType !== Node.TEXT_NODE || node.textContent.trim();
+      });
+    } else {
+      cellContent = '';
     }
-    // Each cards33 row: [image, content]
-    rows.push([
-      img || '',
-      contentDiv
-    ]);
+
+    return [img, cellContent.length === 1 ? cellContent[0] : cellContent];
   });
 
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    ...rows
+  ], document);
+
   element.replaceWith(table);
 }

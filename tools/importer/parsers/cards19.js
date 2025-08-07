@@ -1,25 +1,45 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header must match exactly
-  const headerRow = ['Cards (cards19)'];
+  // Block header as in the example
+  const rows = [['Cards (cards19)']];
 
-  // Get all card divs (each direct child is a card)
-  const cardDivs = Array.from(element.querySelectorAll(':scope > div'));
-  const rows = cardDivs.map(card => {
-    // Icon cell: the .icon div (contains the SVG)
-    const iconDiv = card.querySelector('.icon');
-    // Text cell: the <p> element (contains all text)
-    const p = card.querySelector('p');
-    // Defensive: always put something in cells for robustness
-    return [iconDiv || document.createElement('span'), p || document.createElement('span')];
+  // Get all immediate children representing cards
+  const cards = element.querySelectorAll(':scope > div');
+  
+  cards.forEach(card => {
+    // Find icon (svg) in a .icon div
+    let iconDiv = card.querySelector('.icon');
+    if (!iconDiv) {
+      // fallback: first svg found
+      const svg = card.querySelector('svg');
+      if (svg) {
+        iconDiv = document.createElement('div');
+        iconDiv.className = 'icon';
+        iconDiv.appendChild(svg);
+      }
+    }
+
+    // Find the card's text (first p)
+    let textContent = card.querySelector('p');
+    if (!textContent) {
+      // fallback: all non-icon text nodes
+      const para = document.createElement('p');
+      Array.from(card.childNodes).forEach(node => {
+        if ((node.nodeType === Node.TEXT_NODE && node.textContent.trim()) || (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'DIV')) {
+          para.append(node.cloneNode(true));
+        }
+      });
+      if (para.textContent.trim()) {
+        textContent = para;
+      }
+    }
+    // Only add a row if both exist
+    if (iconDiv && textContent) {
+      rows.push([iconDiv, textContent]);
+    }
   });
 
-  // Assemble the table: header row, then one row per card
-  const table = WebImporter.DOMUtils.createTable([
-    headerRow,
-    ...rows
-  ], document);
-
-  // Replace the original element
+  // Create and replace block
+  const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }
