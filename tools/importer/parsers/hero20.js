@@ -1,50 +1,41 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row matches example
-  const headerRow = ['Hero (hero20)'];
+  // Helper: Get all relevant images in the background grid
+  const gridLayout = element.querySelector('.grid-layout.desktop-3-column.utility-min-height-100dvh');
+  let backgroundImages = [];
+  if (gridLayout) {
+    backgroundImages = Array.from(gridLayout.querySelectorAll('img'));
+  }
+  // Compose a div to group all images as the background collage
+  const bgFragment = document.createElement('div');
+  backgroundImages.forEach(img => bgFragment.appendChild(img));
 
-  // Background images: find the main collage div and collect all images
-  let bgDiv = null;
-  const gridImagesContainer = element.querySelector('.grid-layout.desktop-3-column.utility-min-height-100dvh');
-  if (gridImagesContainer) {
-    const imgs = Array.from(gridImagesContainer.querySelectorAll('img'));
-    if (imgs.length) {
-      bgDiv = document.createElement('div');
-      imgs.forEach(img => bgDiv.appendChild(img));
+  // Get the main content area (headline, subheading, CTAs)
+  let contentDiv = element.querySelector('.ix-hero-scale-3x-to-1x-content .container, .container.small-container');
+  const contentElems = [];
+  if (contentDiv) {
+    // Headline
+    const heading = contentDiv.querySelector('h1, h2, h3');
+    if (heading) contentElems.push(heading);
+    // Subheading (first <p>)
+    const subheading = contentDiv.querySelector('p');
+    if (subheading) contentElems.push(subheading);
+    // CTA buttons
+    const btns = contentDiv.querySelectorAll('.button-group a, .button-group .w-button');
+    if (btns && btns.length) {
+      // If multiple buttons, group them in a div
+      const btnDiv = document.createElement('div');
+      btns.forEach(btn => btnDiv.appendChild(btn));
+      contentElems.push(btnDiv);
     }
   }
 
-  // Content: find text and buttons
-  let contentArr = [];
-  const contentWrapper = element.querySelector(
-    '.ix-hero-scale-3x-to-1x-content .container'
-  );
-  if (contentWrapper) {
-    // Heading (h1)
-    const h1 = contentWrapper.querySelector('h1');
-    if (h1) contentArr.push(h1);
-    // Subheading (first p)
-    const subheading = contentWrapper.querySelector('p');
-    if (subheading) contentArr.push(subheading);
-    // Call-to-actions: collect all <a> in .button-group
-    const btnGroup = contentWrapper.querySelector('.button-group');
-    if (btnGroup) {
-      const ctas = Array.from(btnGroup.querySelectorAll('a'));
-      if (ctas.length) contentArr.push(...ctas);
-    }
-  }
-
-  // If no content, make the cell empty for resilience
-  if (contentArr.length === 0) contentArr = [''];
-
-  // Table assembly: 1 column, 3 rows
-  const rows = [
-    headerRow,
-    [bgDiv],
-    [contentArr]
+  // Compose the table as specified: 1 column, 3 rows
+  const cells = [
+    ['Hero (hero20)'],
+    [bgFragment],
+    [contentElems]
   ];
-
-  // Create and replace
-  const table = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(table);
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

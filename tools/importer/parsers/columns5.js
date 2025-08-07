@@ -1,30 +1,40 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row for columns5 block
-  const cells = [['Columns (columns5)']];
+  // Find the grid that contains the two main columns
+  const grid = element.querySelector('.w-layout-grid.grid-layout');
+  if (!grid) return;
+  const children = Array.from(grid.children);
+  // There should be two children: content (container grid), and image
+  let leftContent = null;
+  let rightImage = null;
 
-  // Find the main grid that contains the two columns
-  const outerGrid = element.querySelector('.w-layout-grid.grid-layout');
-  if (!outerGrid) return;
+  // Find the image: look for the first <img> under this grid
+  rightImage = grid.querySelector('img');
 
-  // The main content is a grid with two children: one inner grid (for text/cta), one image
-  // Let's determine which is which
-  let textCol = null;
-  let imgCol = null;
-  for (const child of Array.from(outerGrid.children)) {
-    if (child.tagName === 'IMG') imgCol = child;
-    else if (child.tagName === 'DIV') textCol = child;
+  // The content grid is the first non-img child
+  leftContent = children.find(child => child !== rightImage);
+  if (!leftContent) return;
+
+  // The actual content is probably in the first child of leftContent
+  let contentBlock = leftContent;
+  if (leftContent.children.length === 1) {
+    contentBlock = leftContent.firstElementChild;
   }
 
-  // In the textCol, the actual text block is another grid, but we can just include all of textCol in the cell
-  // First content row: [textCol, imgCol]
-  const row = [textCol, imgCol];
-  cells.push(row);
+  // Gather all elements: heading, paragraph, buttons (in order)
+  const colParts = [];
+  const h2 = contentBlock.querySelector('h2');
+  if (h2) colParts.push(h2);
+  // Grab the first rich text or paragraph block
+  const richText = contentBlock.querySelector('.rich-text, .w-richtext, p');
+  if (richText) colParts.push(richText);
+  // Grab the button group
+  const btnGroup = contentBlock.querySelector('.button-group');
+  if (btnGroup) colParts.push(btnGroup);
 
-  // If there are additional rows of columns in the source, they should be added here
-  // In the current HTML, there is only one row (the two columns: left = text, right = image)
-
-  // Create and replace
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Compose the table as a columns block
+  const headerRow = ['Columns (columns5)'];
+  const contentRow = [colParts, rightImage];
+  const table = WebImporter.DOMUtils.createTable([headerRow, contentRow], document);
   element.replaceWith(table);
 }

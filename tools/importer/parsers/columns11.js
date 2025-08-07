@@ -1,57 +1,48 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the main container
-  const container = element.querySelector('.container');
-  if (!container) return;
-
-  // The first grid contains intro left and right
-  const mainGrids = container.querySelectorAll('.w-layout-grid');
-  let leftCol = document.createElement('div');
-  let rightCol = document.createElement('div');
-
-  // --- LEFT COLUMN: Headline, subheadline, paragraph, author, button ---
-  // left block (eyebrow and h1)
-  const leftBlock = mainGrids[0].children[0];
-  if (leftBlock) {
-    Array.from(leftBlock.children).forEach(child => leftCol.appendChild(child));
-  }
-
-  // right description block (paragraph, author, button)
-  const rightBlock = mainGrids[0].children[1];
-  if (rightBlock) {
-    // Paragraph
-    const richText = rightBlock.querySelector('.rich-text');
-    if (richText) leftCol.appendChild(richText);
-    // Author section and button
-    const grid = rightBlock.querySelector('.w-layout-grid');
-    if (grid) {
-      // Author row
-      const authorRow = grid.querySelector('.flex-horizontal.y-center');
-      if (authorRow) leftCol.appendChild(authorRow);
-      // Button (may be last child)
-      const readMoreBtn = grid.querySelector('a');
-      if (readMoreBtn) leftCol.appendChild(readMoreBtn);
+  // Get the main container with the two-column layout
+  const container = element.querySelector('.container > .w-layout-grid.grid-layout.tablet-1-column');
+  let leftCol = null;
+  let rightCol = null;
+  if (container) {
+    const cols = Array.from(container.children);
+    if (cols.length >= 2) {
+      leftCol = cols[0];
+      rightCol = cols[1];
     }
   }
 
-  // --- RIGHT COLUMN: Two large images ---
-  // The next grid is outside the container, inside section
-  let imageGrid = null;
-  let parent = element;
-  // locate the image grid (mobile-portrait-1-column)
-  imageGrid = parent.querySelector('.w-layout-grid.mobile-portrait-1-column');
-  if (imageGrid) {
-    const imgDivs = imageGrid.querySelectorAll('.utility-aspect-1x1');
-    imgDivs.forEach(div => {
-      const img = div.querySelector('img');
-      if (img) rightCol.appendChild(img);
-    });
+  // Compose the left cell: Trend alert, h1, description, author/date, button
+  const leftCell = document.createElement('div');
+  if (leftCol) {
+    Array.from(leftCol.children).forEach(child => leftCell.appendChild(child));
+  }
+  if (rightCol) {
+    Array.from(rightCol.children).forEach(child => leftCell.appendChild(child));
   }
 
-  // --- Compose the table as two columns, one row (plus header) ---
-  const headerRow = ['Columns (columns11)'];
-  const cells = [headerRow, [leftCol, rightCol]];
+  // Get the two images for the other columns
+  const imageGrid = element.querySelector('.w-layout-grid.grid-layout.mobile-portrait-1-column');
+  let img1 = null, img2 = null;
+  if (imageGrid) {
+    const imgDivs = Array.from(imageGrid.children);
+    if (imgDivs.length >= 2) {
+      img1 = imgDivs[0].querySelector('img');
+      img2 = imgDivs[1].querySelector('img');
+    }
+  }
 
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Prepare the header row to have the same number of columns as the content row
+  const headerRow = ['Columns (columns11)', '', ''];
+  const columnsRow = [
+    leftCell,
+    img1 || '',
+    img2 || ''
+  ];
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    columnsRow
+  ], document);
+
   element.replaceWith(table);
 }
