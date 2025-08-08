@@ -1,32 +1,40 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header row - must match example exactly
-  const headerRow = ['Columns (columns36)'];
+  // Find the main container
+  const container = element.querySelector('.container');
+  if (!container) return;
 
-  // Get the top-level grid which holds the two columns
-  const grid = element.querySelector('.w-layout-grid.grid-layout');
+  // Find the grid with two columns (text + images)
+  const grid = container.querySelector('.grid-layout');
   if (!grid) return;
-  const columns = Array.from(grid.children);
-  if (columns.length < 2) return;
+  const cols = Array.from(grid.children);
+  if (cols.length < 2) return;
 
-  // First column: content (heading, subheading, buttons)
-  const leftCol = columns[0];
-  // Second column: images grid (which itself contains three <img>s)
-  const rightCol = columns[1];
+  // Left column: Text content (heading, paragraph, buttons)
+  const leftCol = cols[0];
+  // Right column: Images
+  const rightCol = cols[1];
 
-  // For the right column, only the images should be placed in the cell (not the wrappers)
-  // locate the images grid inside the right column
-  const imgGrid = rightCol.querySelector('.w-layout-grid');
-  let imgCellContent = [];
-  if (imgGrid) {
-    imgCellContent = Array.from(imgGrid.querySelectorAll('img'));
+  // For left column, reference the entire block
+  // For right column, find inner image grid and collect images
+  let imagesArr = [];
+  const imageGrid = rightCol.querySelector('.grid-layout');
+  if (imageGrid) {
+    imagesArr = Array.from(imageGrid.querySelectorAll('img'));
+  }
+  // If no grid-layout, look for images directly inside rightCol
+  if (!imagesArr.length) {
+    imagesArr = Array.from(rightCol.querySelectorAll('img'));
   }
 
-  // Compose the row with the left column and right image cell
-  const contentRow = [leftCol, imgCellContent];
+  // Compose table structure
+  const headerRow = ['Columns (columns36)'];
+  const contentRow = [leftCol, imagesArr];
 
-  // Build the table and replace
-  const cells = [headerRow, contentRow];
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    contentRow
+  ], document);
+
+  element.replaceWith(table);
 }

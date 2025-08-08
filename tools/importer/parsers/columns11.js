@@ -1,48 +1,53 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get the main container with the two-column layout
-  const container = element.querySelector('.container > .w-layout-grid.grid-layout.tablet-1-column');
+  // Define header row exactly as in example
+  const headerRow = ['Columns (columns11)'];
+
+  // MAIN ROW extraction
+  // Left column: intro content block
   let leftCol = null;
   let rightCol = null;
-  if (container) {
-    const cols = Array.from(container.children);
+
+  // Find the main grid (the intro and author side)
+  const mainGrid = element.querySelector('.grid-layout.tablet-1-column');
+  if (mainGrid) {
+    const cols = mainGrid.children;
     if (cols.length >= 2) {
-      leftCol = cols[0];
-      rightCol = cols[1];
+      const leftColContainer = document.createElement('div');
+      // Add eyebrow and heading
+      Array.from(cols[0].children).forEach(child => {
+        leftColContainer.appendChild(child);
+      });
+      // Add description
+      const desc = cols[1].querySelector('.rich-text, .w-richtext');
+      if (desc) leftColContainer.appendChild(desc);
+      // Add author block, includes avatar, name/date/read-time
+      const authorRow = cols[1].querySelector('.grid-layout');
+      if (authorRow) leftColContainer.appendChild(authorRow);
+      // Add button (Read more)
+      const btn = cols[1].querySelector('.button, .w-button');
+      if (btn) leftColContainer.appendChild(btn);
+      leftCol = leftColContainer;
     }
   }
 
-  // Compose the left cell: Trend alert, h1, description, author/date, button
-  const leftCell = document.createElement('div');
-  if (leftCol) {
-    Array.from(leftCol.children).forEach(child => leftCell.appendChild(child));
-  }
-  if (rightCol) {
-    Array.from(rightCol.children).forEach(child => leftCell.appendChild(child));
-  }
-
-  // Get the two images for the other columns
-  const imageGrid = element.querySelector('.w-layout-grid.grid-layout.mobile-portrait-1-column');
-  let img1 = null, img2 = null;
+  // Right column: images block
+  const imageGrid = element.querySelector('.grid-layout.mobile-portrait-1-column');
   if (imageGrid) {
-    const imgDivs = Array.from(imageGrid.children);
-    if (imgDivs.length >= 2) {
-      img1 = imgDivs[0].querySelector('img');
-      img2 = imgDivs[1].querySelector('img');
-    }
+    const rightColContainer = document.createElement('div');
+    Array.from(imageGrid.querySelectorAll('img')).forEach(img => {
+      rightColContainer.appendChild(img);
+    });
+    rightCol = rightColContainer;
   }
 
-  // Prepare the header row to have the same number of columns as the content row
-  const headerRow = ['Columns (columns11)', '', ''];
-  const columnsRow = [
-    leftCell,
-    img1 || '',
-    img2 || ''
-  ];
-  const table = WebImporter.DOMUtils.createTable([
+  // Compose rows for table (must be 2 columns, like example)
+  const cells = [
     headerRow,
-    columnsRow
-  ], document);
+    [leftCol, rightCol]
+  ];
 
-  element.replaceWith(table);
+  // Create block table and replace original
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

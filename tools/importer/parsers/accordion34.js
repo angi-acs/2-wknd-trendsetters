@@ -1,48 +1,46 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Prepare the table rows
-  const rows = [];
-  // Header row (must match example exactly)
-  rows.push(['Accordion']);
+  // Accordion block: header row is always ['Accordion']
+  const cells = [['Accordion']];
+  
+  // Find all direct children having accordion class
+  const accordionItems = element.querySelectorAll(':scope > .accordion');
 
-  // Get all immediate accordion child elements
-  const accordions = element.querySelectorAll(':scope > .accordion');
-  accordions.forEach(acc => {
-    // Title cell: get the .w-dropdown-toggle direct child .paragraph-lg (or fallback to last div)
-    let toggle = acc.querySelector('.w-dropdown-toggle');
-    let title = null;
+  accordionItems.forEach((item) => {
+    // Title: the toggle element, look for prominent text
+    const toggle = item.querySelector('.w-dropdown-toggle');
+    let titleCell;
     if (toggle) {
-      title = toggle.querySelector('.paragraph-lg');
-      if (!title) {
-        // fallback: last div in toggle
-        const divs = toggle.querySelectorAll('div');
-        if (divs.length > 0) {
-          title = divs[divs.length - 1];
-        }
+      // Prefer .paragraph-lg inside toggle
+      titleCell = toggle.querySelector('.paragraph-lg');
+      if (!titleCell) {
+        // Fallback: first child div or all text in toggle
+        let div = toggle.querySelector('div');
+        titleCell = div ? div : toggle;
       }
+    } else {
+      // Edge case: no toggle, use item itself (shouldn't happen in these examples)
+      titleCell = item;
     }
-    // Content cell: get the .w-dropdown-list .w-richtext (fallback to all content in w-dropdown-list)
-    let dropdownList = acc.querySelector('.w-dropdown-list');
-    let content = null;
-    if (dropdownList) {
-      content = dropdownList.querySelector('.w-richtext');
-      if (!content) {
-        // fallback: all content in dropdownList
-        content = document.createElement('div');
-        Array.from(dropdownList.childNodes).forEach(node => {
-          if (node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim())) {
-            content.appendChild(node);
-          }
-        });
-      }
+
+    // Content: inside nav.accordion-content or .w-dropdown-list
+    const contentNav = item.querySelector('.w-dropdown-list');
+    let contentCell;
+    if (contentNav) {
+      // Prefer .w-richtext inside
+      const richText = contentNav.querySelector('.w-richtext');
+      contentCell = richText ? richText : contentNav;
+    } else {
+      // Edge case: fallback to item
+      contentCell = item;
     }
-    // Only add row if both title and content exist
-    if (title && content) {
-      rows.push([title, content]);
-    }
+
+    // Add row: [title, content]
+    cells.push([titleCell, contentCell]);
   });
+
   // Create the block table
-  const block = WebImporter.DOMUtils.createTable(rows, document);
-  // Replace the original element
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Replace original element
+  element.replaceWith(table);
 }

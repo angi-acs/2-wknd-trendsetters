@@ -1,38 +1,49 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header matches block name exactly
+  // Table header exactly as block name
   const headerRow = ['Cards (cards23)'];
-  const rows = [headerRow];
+  const rows = [];
 
-  // Each tab contains a grid of cards
-  const tabPanes = element.querySelectorAll('.w-tab-pane');
-  tabPanes.forEach((tabPane) => {
-    const grid = tabPane.querySelector('.w-layout-grid');
-    if (grid) {
-      // Each card is a direct <a> in the grid
-      const cardLinks = grid.querySelectorAll(':scope > a');
-      cardLinks.forEach((card) => {
-        // IMAGE/ICON cell
-        let img = card.querySelector('img');
-        // TEXT cell
-        let title = card.querySelector('h3, .h4-heading');
-        let desc = card.querySelector('div.paragraph-sm');
-        // Build the text cell with existing elements (no cloning, no new content)
-        const textFrag = document.createDocumentFragment();
-        if (title) textFrag.appendChild(title);
-        if (desc) {
-          if (title) textFrag.appendChild(document.createElement('br'));
-          textFrag.appendChild(desc);
-        }
-        rows.push([
-          img ? img : '',
-          textFrag
-        ]);
-      });
-    }
+  // For each tab pane (can be multiple tabs, each with its own grid)
+  const tabPanes = element.querySelectorAll('[class*="w-tab-pane"]');
+  tabPanes.forEach(pane => {
+    const grid = pane.querySelector('.w-layout-grid');
+    if (!grid) return;
+    // Each card is an <a> within the grid
+    Array.from(grid.children).forEach(card => {
+      if (card.tagName !== 'A') return;
+
+      // IMAGE cell
+      let img = card.querySelector('img');
+      let imageCell = img ? img : '';
+
+      // TEXT cell
+      const textDiv = document.createElement('div');
+      // Use h3 or .h4-heading as strong
+      const heading = card.querySelector('h3, .h4-heading');
+      if (heading && heading.textContent) {
+        const strong = document.createElement('strong');
+        strong.textContent = heading.textContent.trim();
+        textDiv.appendChild(strong);
+        textDiv.appendChild(document.createElement('br'));
+      }
+      // Description: .paragraph-sm
+      const desc = card.querySelector('.paragraph-sm');
+      if (desc && desc.textContent) {
+        textDiv.appendChild(document.createTextNode(desc.textContent.trim()));
+      }
+      // Edge case: if not found, fallback on all text (should not happen here, but safe)
+      if (!heading && !desc) {
+        textDiv.textContent = card.textContent.trim();
+      }
+      rows.push([imageCell, textDiv]);
+    });
   });
 
-  // Create and replace with the block table
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  // Create the table
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    ...rows
+  ], document);
   element.replaceWith(table);
 }

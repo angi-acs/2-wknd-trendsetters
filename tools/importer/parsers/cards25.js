@@ -1,30 +1,27 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
+  // Cards (cards25) table header
   const headerRow = ['Cards (cards25)'];
   const rows = [headerRow];
-  const cardDivs = Array.from(element.querySelectorAll(':scope > div'));
 
-  cardDivs.forEach(cardDiv => {
-    // Find the first image in the cardDiv
-    const img = cardDiv.querySelector('img');
-    // Find text content (h1-h6 and/or p)
-    let textWrapper = cardDiv.querySelector('.utility-padding-all-2rem');
-    if (!textWrapper) {
-      // If there's a relative-positioned div, try that (sometimes wraps text)
-      textWrapper = cardDiv.querySelector('.utility-position-relative');
+  // All immediate children of the grid are possible card containers
+  const children = Array.from(element.querySelectorAll(':scope > div'));
+
+  children.forEach(card => {
+    // Find the main image, always required for a card row
+    const img = card.querySelector('img');
+    if (!img) return;
+
+    // Find title + description container (optional)
+    let textCell = '';
+    // On cards with text, it is inside .utility-padding-all-2rem
+    const textWrapper = card.querySelector('.utility-padding-all-2rem');
+    if (textWrapper) {
+      textCell = textWrapper;
     }
-    // Last resort: check for heading or paragraph directly in cardDiv
-    if (!textWrapper && (cardDiv.querySelector('h1, h2, h3, h4, h5, h6') || cardDiv.querySelector('p'))) {
-      textWrapper = cardDiv;
-    }
-    // Only include card if both image and some text content exist
-    if (img && textWrapper && (textWrapper.querySelector('h1, h2, h3, h4, h5, h6') || textWrapper.querySelector('p'))) {
-      rows.push([img, textWrapper]);
-    }
+    rows.push([img, textCell]);
   });
 
-  if (rows.length > 1) {
-    const table = WebImporter.DOMUtils.createTable(rows, document);
-    element.replaceWith(table);
-  }
+  const block = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(block);
 }

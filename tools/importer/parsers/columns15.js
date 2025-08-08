@@ -1,33 +1,46 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the main container (should contain the grid layout)
-  const container = element.querySelector('.container');
-  if (!container) return;
-
-  // Find the grid layout for the main columns
-  const grid = container.querySelector('.w-layout-grid');
-  if (!grid) return;
-
-  // Find all direct children of the grid (these are our columns)
-  const gridChildren = Array.from(grid.children);
-
-  // We expect the left column to have the text content, the right the image
-  // Find the left (text) column by presence of an h1
-  let leftCol = gridChildren.find(child => child.querySelector('h1'));
-  // Find the right (image) column by presence of an img
-  let rightCol = gridChildren.find(child => child.querySelector('img'));
-
-  // If for some reason, only one found, skip
-  if (!leftCol || !rightCol) return;
-
-  // Reference the actual elements for the cells
+  // Ensure the header row matches the example exactly
   const headerRow = ['Columns (columns15)'];
-  const columnsRow = [leftCol, rightCol];
 
-  // Build the table for the Columns block
-  const cells = [headerRow, columnsRow];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Find the main grid layout, which defines the columns structure
+  const grid = element.querySelector('.grid-layout');
+  let columns = [];
 
-  // Replace the original element with the block table
+  if (grid) {
+    // For each grid column, gather all child nodes (including text nodes)
+    columns = Array.from(grid.children).map((col) => {
+      // Gather heading, paragraph, buttons, and images in a column
+      const content = [];
+      Array.from(col.childNodes).forEach((node) => {
+        if (node.nodeType === 3) { // Text node, preserve non-empty
+          if (node.textContent.trim()) {
+            // Create a span for text node to preserve semantic meaning
+            const span = document.createElement('span');
+            span.textContent = node.textContent;
+            content.push(span);
+          }
+        } else if (node.nodeType === 1) { // Element node
+          content.push(node);
+        }
+      });
+      // If content is empty but column has no children
+      if (content.length === 0) {
+        content.push(col);
+      }
+      return content;
+    });
+  } else {
+    // Fallback: treat element itself as a single column
+    columns = [[element]];
+  }
+
+  // Build the block table: header, then columns as a single row
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    columns
+  ], document);
+
+  // Replace the original element with the new structured table
   element.replaceWith(table);
 }

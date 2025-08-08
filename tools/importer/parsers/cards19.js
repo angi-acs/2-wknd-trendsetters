@@ -1,45 +1,43 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header as in the example
-  const rows = [['Cards (cards19)']];
+  // Table header as specified
+  const headerRow = ['Cards (cards19)'];
 
   // Get all immediate children representing cards
-  const cards = element.querySelectorAll(':scope > div');
-  
-  cards.forEach(card => {
-    // Find icon (svg) in a .icon div
-    let iconDiv = card.querySelector('.icon');
-    if (!iconDiv) {
-      // fallback: first svg found
+  const cardDivs = Array.from(element.querySelectorAll(':scope > div'));
+
+  const rows = cardDivs.map(card => {
+    // Icon cell - find div.icon or first svg
+    let iconCell = null;
+    const iconDiv = card.querySelector('.icon');
+    if (iconDiv) {
+      iconCell = iconDiv;
+    } else {
+      // fallback: find the first svg
       const svg = card.querySelector('svg');
       if (svg) {
-        iconDiv = document.createElement('div');
-        iconDiv.className = 'icon';
-        iconDiv.appendChild(svg);
+        iconCell = svg;
       }
     }
-
-    // Find the card's text (first p)
-    let textContent = card.querySelector('p');
-    if (!textContent) {
-      // fallback: all non-icon text nodes
-      const para = document.createElement('p');
-      Array.from(card.childNodes).forEach(node => {
-        if ((node.nodeType === Node.TEXT_NODE && node.textContent.trim()) || (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'DIV')) {
-          para.append(node.cloneNode(true));
-        }
-      });
-      if (para.textContent.trim()) {
-        textContent = para;
-      }
+    // Text cell - find p tag (description)
+    let textCell = null;
+    const p = card.querySelector('p');
+    if (p) {
+      textCell = p;
+    } else {
+      // fallback: find first text node or div after icon
+      // Most likely, if no <p>, use everything except the iconDiv
+      // But our HTML always has a <p>
+      textCell = card;
     }
-    // Only add a row if both exist
-    if (iconDiv && textContent) {
-      rows.push([iconDiv, textContent]);
-    }
+    // If iconCell or textCell are missing, use empty string (for edge-case resilience)
+    return [iconCell || '', textCell || ''];
   });
 
-  // Create and replace block
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  // Compose table cells: header, then card rows
+  const tableCells = [headerRow, ...rows];
+
+  // Create and replace
+  const table = WebImporter.DOMUtils.createTable(tableCells, document);
   element.replaceWith(table);
 }

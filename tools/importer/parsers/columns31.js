@@ -1,24 +1,25 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid-layout containing the columns
+  // The header row must be a single cell, not spread across multiple columns
+  const headerRow = ['Columns (columns31)'];
+
+  // Find the columns container
   const grid = element.querySelector('.grid-layout');
   if (!grid) return;
-  // Get all immediate children of the grid-layout (the columns)
+
+  // Get all immediate children, each is a column
   const columns = Array.from(grid.children);
-  if (!columns.length) return;
-  // Table header must be one cell, as the example shows
-  const headerRow = ['Columns (columns31)'];
-  // The content row must have as many columns as grid children
+  if (columns.length === 0) return;
+
+  // The next row consists of one cell per column (so, columns.length cells)
   const contentRow = columns;
-  const table = WebImporter.DOMUtils.createTable([
+
+  // Assemble the table: header row (1 cell), then content row (N cells)
+  const cells = [
     headerRow,
     contentRow
-  ], document);
-  // After table creation, set the first th to have colspan for correct HTML render
-  const th = table.querySelector('th');
-  if (th && columns.length > 1) {
-    th.setAttribute('colspan', String(columns.length));
-  }
-  // Replace the original element with the table
+  ];
+
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

@@ -1,48 +1,42 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid inside the container - this holds the columns
-  const grid = element.querySelector('.grid-layout');
+  // Header row from spec
+  const headerRow = ['Columns (columns18)'];
+  
+  // Find the grid layout
+  const grid = element.querySelector('.w-layout-grid');
   if (!grid) return;
+
+  // The grid contains 3 children: left (text), middle (ul), right (image)
+  // Get all grid children
   const gridChildren = Array.from(grid.children);
 
-  // The expected structure from the HTML:
-  // gridChildren[0] = left content (headings and paragraph)
-  // gridChildren[1] = ul contact list
-  // gridChildren[2] = image
-
-  // But let's find these explicitly, in case order changes
-  let contentDiv = null;
-  let contactList = null;
-  let image = null;
+  // Identify column elements by tag
+  let leftCol = null, middleCol = null, rightCol = null;
   gridChildren.forEach(child => {
-    if (child.tagName === 'DIV' && !contentDiv) {
-      contentDiv = child;
-    } else if (child.tagName === 'UL' && !contactList) {
-      contactList = child;
-    } else if (child.tagName === 'IMG' && !image) {
-      image = child;
+    if (!leftCol && child.tagName === 'DIV' && child.querySelector('h2, h3, p')) {
+      leftCol = child;
+    } else if (!middleCol && child.tagName === 'UL') {
+      middleCol = child;
+    } else if (!rightCol && child.tagName === 'IMG') {
+      rightCol = child;
     }
   });
 
-  // For the left column, combine the heading content and the contact list
-  const leftColContent = [];
-  if (contentDiv) {
-    leftColContent.push(contentDiv);
-  }
-  if (contactList) {
-    leftColContent.push(contactList);
-  }
+  // Layout: leftCol (the heading and copy), middleCol (the contact info), rightCol (the image)
+  // The screenshot shows left column = leftCol + middleCol, right column = rightCol
+  const leftColumnContent = [];
+  if (leftCol) leftColumnContent.push(leftCol);
+  if (middleCol) leftColumnContent.push(middleCol);
+  const rightColumnContent = rightCol ? [rightCol] : [];
 
-  // The right column is just the image
-  const rightColContent = image;
+  // Compose the table cells row
+  const cellsRow = [leftColumnContent, rightColumnContent];
+  
+  // Build the table rows
+  const tableArr = [headerRow, cellsRow];
+  const block = WebImporter.DOMUtils.createTable(tableArr, document);
 
-  // Only build the row if we have at least something in left or right
-  if (leftColContent.length === 0 && !rightColContent) return;
-
-  const headerRow = ['Columns (columns18)'];
-  const row = [leftColContent, rightColContent];
-
-  const cells = [headerRow, row];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  // Replace the original element
+  element.replaceWith(block);
 }

@@ -1,54 +1,39 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Table header row
+  // Header row
   const headerRow = ['Hero (hero28)'];
 
-  // 2. Background image row
-  // Find the first <img> that is likely the background image
+  // Find the background image (first img inside .ix-parallax-scale-out-hero)
   let bgImg = null;
-  const grid = element.querySelector('.w-layout-grid');
-  if (grid) {
-    // The first child div of grid has the background image
-    const gridChildren = Array.from(grid.children);
-    if (gridChildren.length > 0) {
-      const bgDiv = gridChildren[0];
-      bgImg = bgDiv.querySelector('img');
-    }
+  const parallaxDiv = element.querySelector('.ix-parallax-scale-out-hero');
+  if (parallaxDiv) {
+    const imgEl = parallaxDiv.querySelector('img');
+    if (imgEl) bgImg = imgEl;
   }
-  const bgImgRow = [bgImg ? bgImg : ''];
 
-  // 3. Content row (heading, subheading, CTA)
-  let contentCell = [];
-  if (grid) {
-    // The second child div of grid has the text content
-    const gridChildren = Array.from(grid.children);
-    if (gridChildren.length > 1) {
-      const contentDiv = gridChildren[1];
-      // Find heading(s)
-      const headings = contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      headings.forEach(h => contentCell.push(h));
-      // Find CTA button(s)
-      const buttonGroup = contentDiv.querySelector('.button-group');
-      if (buttonGroup) {
-        // add each child (if any) of button group
-        if (buttonGroup.children.length > 0) {
-          contentCell.push(...buttonGroup.children);
-        }
+  // Find the content block with heading and CTA: .container .utility-margin-bottom-6rem
+  let contentBlock = null;
+  const gridDiv = element.querySelector('.w-layout-grid');
+  if (gridDiv) {
+    const contentContainer = gridDiv.querySelector('.container');
+    if (contentContainer) {
+      const marginDiv = contentContainer.querySelector('.utility-margin-bottom-6rem');
+      if (marginDiv) {
+        contentBlock = marginDiv;
+      } else {
+        // fallback: use the whole contentContainer
+        contentBlock = contentContainer;
       }
     }
   }
-  // Fallback if nothing found
-  if (contentCell.length === 0) {
-    contentCell = [''];
-  }
-  const contentRow = [contentCell];
 
-  // Compose the table
+  // Build the table: strictly 1 column 3 rows per spec
   const cells = [
     headerRow,
-    bgImgRow,
-    contentRow
+    [bgImg ? bgImg : ''],
+    [contentBlock ? contentBlock : '']
   ];
+
   const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

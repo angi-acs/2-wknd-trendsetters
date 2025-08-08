@@ -1,48 +1,75 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row
-  const rows = [
-    ['Cards (cards37)']
-  ];
+  // Table header exactly as specified
+  const headerRow = ['Cards (cards37)'];
 
-  // Find the grid that contains the cards
-  let topGrid = element.querySelector('.w-layout-grid.grid-layout');
-  if (!topGrid) topGrid = element;
+  // Find main grid containing the cards
+  const mainGrid = element.querySelector('.container > .grid-layout');
+  if (!mainGrid) return;
 
-  // Get all direct children (a or div) of the top grid
-  let cards = [];
-  topGrid.childNodes.forEach((child) => {
-    if (child.nodeType === 1 && (child.matches('a.utility-link-content-block, .utility-link-content-block'))) {
-      cards.push(child);
-    } else if (child.nodeType === 1 && child.classList.contains('w-layout-grid')) {
-      // Nested grid: get its direct card children
-      child.querySelectorAll(':scope > a.utility-link-content-block, :scope > .utility-link-content-block').forEach(a => {
-        cards.push(a);
-      });
+  // Helper: extract card data from a card <a> element
+  function extractCard(cardElem) {
+    // Find the image (mandatory)
+    const img = cardElem.querySelector('img');
+
+    // Find the text content container
+    // Sometimes it's wrapped in .utility-padding-all-2rem, otherwise direct children
+    let textContainer = cardElem.querySelector('.utility-padding-all-2rem') || cardElem;
+
+    // Heading (use h3 or h4)
+    const heading = textContainer.querySelector('h3, h4');
+    // Description (first <p> after heading, or first <p> if heading is missing)
+    let desc = null;
+    if (heading) {
+      let next = heading.nextElementSibling;
+      if (next && next.tagName.toLowerCase() === 'p') {
+        desc = next;
+      }
+    } else {
+      desc = textContainer.querySelector('p');
     }
-  });
+    // Call to action (CTA): .button or <a> that's not the top card link
+    let cta = null;
+    // Only search in textContainer for .button or a sub-anchor (not top-level)
+    const btn = textContainer.querySelector('.button');
+    if (btn) cta = btn;
+    // If not found, try <a> not at the top level
+    if (!cta) {
+      const btnLink = Array.from(textContainer.querySelectorAll('a')).find(a => a !== cardElem);
+      if (btnLink) cta = btnLink;
+    }
 
-  cards.forEach((card) => {
-    // First column: image (use the aspect ratio wrapper so any cropping/borders are preserved)
-    let imgDiv = card.querySelector('div[class*="utility-aspect-"]');
-    let imageCell = imgDiv || '';
+    // Compose the right cell in order: heading, description, cta
+    const rightCell = [];
+    if (heading) rightCell.push(heading);
+    if (desc) rightCell.push(desc);
+    if (cta) rightCell.push(cta);
+    return [img, rightCell];
+  }
 
-    // Second column: all text content (heading, description, cta if present)
-    let textCell = [];
-    // Heading (displayed as h2 or h3 or h4)
-    let heading = card.querySelector('h2, h3, h4');
-    if (heading) textCell.push(heading);
-    // Description (the first p after heading)
-    let desc = card.querySelector('p');
-    if (desc) textCell.push(desc);
-    // CTA (button or .button, rarely present)
-    let cta = card.querySelector('a.button, button, .button');
-    if (cta) textCell.push(cta);
+  // Gather all cards
+  const cardRows = [];
+  // The mainGrid has two direct children: the left big card (an <a>), and right column grid
+  const children = Array.from(mainGrid.children);
+  if (children.length < 2) return;
 
-    rows.push([imageCell, textCell]);
-  });
+  // Left (first) card is a single <a>
+  const leftCard = children[0];
+  if (leftCard.tagName.toLowerCase() === 'a') {
+    cardRows.push(extractCard(leftCard));
+  }
 
-  // Build and replace
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  // Right column: a grid of 4 <a> cards inside another .grid-layout
+  const rightGrid = children[1];
+  if (rightGrid && rightGrid.classList.contains('grid-layout')) {
+    const rightCards = rightGrid.querySelectorAll(':scope > a');
+    rightCards.forEach(card => {
+      cardRows.push(extractCard(card));
+    });
+  }
+
+  // Create the table
+  const cells = [headerRow, ...cardRows];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

@@ -1,17 +1,24 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get all direct child divs (columns)
+  // Get all immediate child divs (each representing a column)
   const columns = Array.from(element.querySelectorAll(':scope > div'));
-  // For each column, get the main image or the entire column
-  const cells = columns.map(col => {
+
+  // Header row: should be a single cell, as in the example
+  const headerRow = ['Columns (columns7)'];
+
+  // Content row: each cell is the content for a column
+  const contentRow = columns.map(col => {
     const img = col.querySelector('img');
-    return img ? img : col;
+    if (img) return img;
+    if (col.childNodes.length) return Array.from(col.childNodes);
+    return '';
   });
-  // Header row is a single cell array
-  const tableRows = [
-    ['Columns (columns7)'], // single header cell
-    cells // content row (one cell per column)
-  ];
-  const table = WebImporter.DOMUtils.createTable(tableRows, document);
+
+  // Table: header is a single cell, content row contains all columns
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    contentRow
+  ], document);
+
   element.replaceWith(table);
 }

@@ -1,41 +1,37 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header as in the example
+  // 1. Header row: block name exactly as specified
   const headerRow = ['Hero (hero6)'];
 
-  // Extract background image (should be the .cover-image inside the left grid area)
-  const bgImg = element.querySelector('img.cover-image');
-  const imageRow = [bgImg ? bgImg : ''];
-
-  // Extract text card (headline, subheading, CTAs) from the right-side grid
-  let contentRow = [''];
-  const textCard = element.querySelector('.card');
-  if (textCard) {
-    // Gather content in order: heading(s), subheading, ctas
-    const parts = [];
-    // Headline (keep its heading level)
-    const heading = textCard.querySelector('h1, h2, h3, h4, h5, h6');
-    if (heading) parts.push(heading);
-    // Subheading (either .subheading or first <p>)
-    // Prefer .subheading if present
-    let subheading = textCard.querySelector('.subheading');
-    if (!subheading) {
-      // fallback to first <p> that is not inside a .button-group
-      subheading = Array.from(textCard.querySelectorAll('p')).find(p => !p.closest('.button-group'));
-    }
-    if (subheading) parts.push(subheading);
-    // Button group (if present)
-    const buttonGroup = textCard.querySelector('.button-group');
-    if (buttonGroup) parts.push(buttonGroup);
-    contentRow = [parts];
+  // 2. Second row: background image (img element, if present)
+  let bgImg = null;
+  // Find the background image by searching for a direct descendant img in the first grid cell
+  const gridDivs = element.querySelectorAll(':scope > .w-layout-grid > div');
+  if (gridDivs.length > 0) {
+    // Typically background image is in the first grid cell
+    const possibleImg = gridDivs[0].querySelector('img');
+    if (possibleImg) bgImg = possibleImg;
   }
 
-  // Build the table as per required format (Header, Image, Content)
+  // 3. Third row: headline, subheading, and CTA (all content card)
+  let cardContent = null;
+  // Card is nested inside the second grid column
+  if (gridDivs.length > 1) {
+    const card = gridDivs[1].querySelector('.card');
+    if (card) cardContent = card;
+  }
+
+  // Compose table rows
+  // If background image or content is missing, provide empty string to maintain rows
   const rows = [
     headerRow,
-    imageRow,
-    contentRow
+    [bgImg || ''],
+    [cardContent || '']
   ];
-  const table = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(table);
+
+  // Create table using WebImporter.DOMUtils.createTable
+  const block = WebImporter.DOMUtils.createTable(rows, document);
+
+  // Replace the original element with the block table
+  element.replaceWith(block);
 }

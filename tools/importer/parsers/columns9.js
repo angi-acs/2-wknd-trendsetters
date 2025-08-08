@@ -1,21 +1,32 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid of columns within the footer
-  const grid = element.querySelector('.w-layout-grid.grid-layout');
-  if (!grid) return;
-
-  // Each child of grid is a column
-  const columns = Array.from(grid.children);
-
-  // Table header must be a single cell with the block name
+  // Find the columns container
+  const grid = element.querySelector('.w-layout-grid');
+  let columns = [];
+  if (grid) {
+    // Each direct child of the grid is a column
+    columns = Array.from(grid.children);
+  } else {
+    // Fallback: treat all children of .container as columns
+    const container = element.querySelector('.container');
+    if (container) {
+      columns = Array.from(container.children);
+    } else {
+      columns = Array.from(element.children);
+    }
+  }
+  // Compose the block table rows
+  // Header row is always a single cell
   const headerRow = ['Columns (columns9)'];
-  // Content row: each cell is one column of content
+  // Second row should have exactly as many columns as found
+  // Each cell is the direct reference to the column element
   const contentRow = columns;
-
-  const table = WebImporter.DOMUtils.createTable([
-    headerRow,
-    contentRow
-  ], document);
-
-  element.replaceWith(table);
+  // Only create the table if there are columns
+  if (columns.length > 0) {
+    const table = WebImporter.DOMUtils.createTable([
+      headerRow,
+      contentRow
+    ], document);
+    element.replaceWith(table);
+  }
 }

@@ -1,43 +1,60 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row - must match example
+  // Header row
   const headerRow = ['Hero (hero12)'];
 
-  // Find background image (first img direct child of the top-level grid-layout)
+  // Find the background image (absolute-positioned image in the first grid cell)
   let bgImg = null;
-  const grid = element.querySelector('.grid-layout.desktop-1-column');
-  if (grid) {
-    const gridDivs = grid.querySelectorAll(':scope > div');
-    if (gridDivs.length > 0) {
-      bgImg = gridDivs[0].querySelector('img');
-    }
+  const gridDivs = element.querySelectorAll(':scope > .w-layout-grid > div');
+  if (gridDivs.length > 0) {
+    const maybeImg = gridDivs[0].querySelector('img');
+    if (maybeImg) bgImg = maybeImg;
   }
 
-  // Find content (headline, points, button) - the .card-body inside the .container
-  let contentCell = null;
-  const container = element.querySelector('.container');
-  if (container) {
+  // Find main content (the second grid cell)
+  let contentCell = '';
+  if (gridDivs.length > 1) {
+    // This div contains the card with all the text, side image, cta, etc
+    const container = gridDivs[1];
     const cardBody = container.querySelector('.card-body');
     if (cardBody) {
-      contentCell = cardBody;
+      const grid = cardBody.querySelector('.grid-layout');
+      if (grid) {
+        // Side image (if any)
+        const sideImg = grid.querySelector('img');
+        // Text and CTA block (div)
+        let textCtaDiv = null;
+        const children = Array.from(grid.children);
+        for (const child of children) {
+          if (child.tagName === 'DIV') {
+            textCtaDiv = child;
+            break;
+          }
+        }
+        // Compose: side image (if present), then text/cta block (if present)
+        const cellArr = [];
+        if (sideImg) cellArr.push(sideImg);
+        if (textCtaDiv) cellArr.push(textCtaDiv);
+        if (cellArr.length) {
+          contentCell = cellArr;
+        } else {
+          contentCell = cardBody;
+        }
+      } else {
+        contentCell = cardBody;
+      }
     } else {
       contentCell = container;
     }
-  } else {
-    // fallback, rare: use the whole element
-    contentCell = element;
   }
 
-  // Build the table rows. Each row is a single cell, as per the spec.
-  const rows = [
+  // Assemble table
+  const cells = [
     headerRow,
-    [bgImg],
+    [bgImg ? bgImg : ''],
     [contentCell],
   ];
 
-  // Clean up any undefined/null cells (e.g. if bgImg missing, cell must be empty)
-  const cleanedRows = rows.map(row => row.map(cell => cell || ''));
-
-  const table = WebImporter.DOMUtils.createTable(cleanedRows, document);
-  element.replaceWith(table);
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

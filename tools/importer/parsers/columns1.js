@@ -1,21 +1,24 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the immediate grid container for columns
+  // Find the grid layout containing the columns
   const grid = element.querySelector('.grid-layout');
   if (!grid) return;
-  // Get all top-level columns (should be image and content)
-  const children = Array.from(grid.children);
-  if (children.length < 2) return;
+  // Get the immediate children (columns): image and right-side content
+  const columns = Array.from(grid.children);
+  // Defensive: Only proceed if there are at least 2 columns
+  if (columns.length < 2) return;
 
-  // Reference the existing elements directly for each column
-  const leftCol = children[0]; // e.g., image
-  const rightCol = children[1]; // e.g., text content
+  // Compose header row as in the requirement
+  const headerRow = ['Columns (columns1)'];
+  // Content row: each cell is the actual column DOM node (no clone!), preserving all child content and semantics
+  const contentRow = columns;
 
-  // Compose the table structure with header and content row
+  // Build the table
   const table = WebImporter.DOMUtils.createTable([
-    ['Columns (columns1)'],
-    [leftCol, rightCol],
+    headerRow,
+    contentRow
   ], document);
 
+  // Replace the original element with the new block table
   element.replaceWith(table);
 }
