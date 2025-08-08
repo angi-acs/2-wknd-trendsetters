@@ -1,43 +1,33 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header as specified
+  // Table header matches example exactly
   const headerRow = ['Cards (cards19)'];
-
-  // Get all immediate children representing cards
+  // Collect all top-level direct card divs
   const cardDivs = Array.from(element.querySelectorAll(':scope > div'));
 
-  const rows = cardDivs.map(card => {
-    // Icon cell - find div.icon or first svg
-    let iconCell = null;
-    const iconDiv = card.querySelector('.icon');
-    if (iconDiv) {
-      iconCell = iconDiv;
+  // Each card is 2 columns: icon (SVG) and text (paragraph)
+  const rows = cardDivs.map(cardDiv => {
+    // Cell 1: Icon/graphic
+    // Look for an element with .icon and SVG inside
+    let iconContainer = cardDiv.querySelector('.icon');
+    let iconContent = null;
+    if (iconContainer && iconContainer.firstElementChild) {
+      iconContent = iconContainer; // Reference the div with SVG inside
     } else {
-      // fallback: find the first svg
-      const svg = card.querySelector('svg');
-      if (svg) {
-        iconCell = svg;
-      }
+      // fallback: first SVG
+      let svg = cardDiv.querySelector('svg');
+      if (svg) iconContent = svg;
+      else iconContent = '';
     }
-    // Text cell - find p tag (description)
-    let textCell = null;
-    const p = card.querySelector('p');
-    if (p) {
-      textCell = p;
-    } else {
-      // fallback: find first text node or div after icon
-      // Most likely, if no <p>, use everything except the iconDiv
-      // But our HTML always has a <p>
-      textCell = card;
-    }
-    // If iconCell or textCell are missing, use empty string (for edge-case resilience)
-    return [iconCell || '', textCell || ''];
+    // Cell 2: Text content (paragraph)
+    let p = cardDiv.querySelector('p');
+    let textCell = p ? p : '';
+    return [iconContent, textCell];
   });
 
-  // Compose table cells: header, then card rows
-  const tableCells = [headerRow, ...rows];
-
-  // Create and replace
-  const table = WebImporter.DOMUtils.createTable(tableCells, document);
-  element.replaceWith(table);
+  // Compose table for Cards (cards19)
+  const cells = [headerRow, ...rows];
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  // Replace original element with new table block
+  element.replaceWith(block);
 }

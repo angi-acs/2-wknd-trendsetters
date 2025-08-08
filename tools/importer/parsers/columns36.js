@@ -1,40 +1,45 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the main container
-  const container = element.querySelector('.container');
-  if (!container) return;
-
-  // Find the grid with two columns (text + images)
-  const grid = container.querySelector('.grid-layout');
-  if (!grid) return;
-  const cols = Array.from(grid.children);
-  if (cols.length < 2) return;
-
-  // Left column: Text content (heading, paragraph, buttons)
-  const leftCol = cols[0];
-  // Right column: Images
-  const rightCol = cols[1];
-
-  // For left column, reference the entire block
-  // For right column, find inner image grid and collect images
-  let imagesArr = [];
-  const imageGrid = rightCol.querySelector('.grid-layout');
-  if (imageGrid) {
-    imagesArr = Array.from(imageGrid.querySelectorAll('img'));
-  }
-  // If no grid-layout, look for images directly inside rightCol
-  if (!imagesArr.length) {
-    imagesArr = Array.from(rightCol.querySelectorAll('img'));
-  }
-
-  // Compose table structure
+  // Header row matches exactly
   const headerRow = ['Columns (columns36)'];
-  const contentRow = [leftCol, imagesArr];
 
-  const table = WebImporter.DOMUtils.createTable([
+  // Find the main grid containing the columns
+  const mainGrid = element.querySelector('.grid-layout');
+  if (!mainGrid) return;
+
+  // Get immediate children (left: text/buttons, right: images)
+  const columns = Array.from(mainGrid.children);
+  if (columns.length < 2) return;
+
+  // --- LEFT COLUMN ---
+  const leftCol = columns[0];
+  // Collect all relevant content from leftCol
+  // Find main heading, subheading, button group (if present)
+  const leftContent = [];
+  const heading = leftCol.querySelector('h1');
+  if (heading) leftContent.push(heading);
+  const subheading = leftCol.querySelector('p');
+  if (subheading) leftContent.push(subheading);
+  const btnGrp = leftCol.querySelector('.button-group');
+  if (btnGrp) leftContent.push(btnGrp);
+
+  // --- RIGHT COLUMN ---
+  const rightCol = columns[1];
+  // Find image grid inside rightCol
+  const imageGrid = rightCol.querySelector('.grid-layout');
+  let rightContent = [];
+  if (imageGrid) {
+    // Get all images inside imageGrid
+    const imgs = Array.from(imageGrid.querySelectorAll('img'));
+    rightContent = imgs;
+  }
+
+  // Compose table data: only a single block table, two columns in second row
+  const cells = [
     headerRow,
-    contentRow
-  ], document);
+    [leftContent, rightContent]
+  ];
 
-  element.replaceWith(table);
+  const blockTable = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(blockTable);
 }

@@ -1,48 +1,54 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row: block name must match example
+  // Table header should match example exactly
   const headerRow = ['Cards (cards21)'];
 
-  // Find all card bodies (to support robust multi-card parsing)
-  const cardBodies = element.querySelectorAll('.card-body');
-  const cardRows = [];
+  // Generalize to handle multiple cards (even if only one in this example)
+  // Find all descendant .card elements
+  const cardElements = element.querySelectorAll('.card');
+  const rows = [headerRow];
 
-  cardBodies.forEach(cardBody => {
-    // Image/icon in first cell
+  cardElements.forEach(cardEl => {
+    // Try to find the card body
+    const cardBody = cardEl.querySelector('.card-body') || cardEl;
+    // Find the image (mandatory)
     const img = cardBody.querySelector('img');
-
-    // Title (heading)
-    const heading = cardBody.querySelector('.h4-heading');
-
-    // Description: all remaining text in cardBody except for heading
-    let descriptionText = '';
+    // Find the heading (optional)
+    let heading = cardBody.querySelector('.h4-heading, h1, h2, h3, h4, h5, h6');
+    // Find description (optional):
+    // Description is any <p>, or any sibling after heading, excluding image
+    let description = null;
     if (heading) {
-      // Create a clone to avoid mutating live DOM
-      const cardClone = cardBody.cloneNode(true);
-      // Remove the heading from the clone
-      const headingClone = cardClone.querySelector('.h4-heading');
-      if (headingClone) headingClone.remove();
-      // Remove all images from clone
-      cardClone.querySelectorAll('img').forEach(imgEl => imgEl.remove());
-      descriptionText = cardClone.textContent.trim();
+      let next = heading.nextElementSibling;
+      while (next) {
+        if (next.tagName.toLowerCase() !== 'img') {
+          description = next;
+          break;
+        }
+        next = next.nextElementSibling;
+      }
+    } else {
+      // If no heading, try to find a <p> or any non-image element
+      let possible = Array.from(cardBody.children).find(el => el.tagName.toLowerCase() !== 'img');
+      if (possible) description = possible;
     }
+    // Compose text cell
+    const textCell = [];
+    if (heading) textCell.push(heading);
+    if (description) {
+      // Add line break between heading and description only if both exist and
+      // description is not just whitespace or duplicate of heading
+      if (heading) textCell.push(document.createElement('br'));
+      textCell.push(description);
+    }
+    // If neither heading nor description, ensure cell is not empty
+    if (!textCell.length) textCell.push('');
 
-    // Compose the text cell: heading (if present) + description (if present)
-    const textCellContent = [];
-    if (heading) textCellContent.push(heading);
-    if (descriptionText) {
-      const descDiv = document.createElement('div');
-      descDiv.textContent = descriptionText;
-      textCellContent.push(descDiv);
-    }
-    cardRows.push([
-      img || '',
-      textCellContent.length ? textCellContent : ''
-    ]);
+    // Build row: [image, text cell]
+    rows.push([img, textCell]);
   });
 
-  // Compose final table
-  const cells = [headerRow, ...cardRows];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  // Create table and replace original element
+  const block = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(block);
 }

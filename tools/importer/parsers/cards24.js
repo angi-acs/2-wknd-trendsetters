@@ -1,39 +1,62 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header, matching example exactly
+  // Cards (cards24) block header
   const headerRow = ['Cards (cards24)'];
+
+  // Get all direct card elements
+  const cards = Array.from(element.querySelectorAll(':scope > a.utility-link-content-block'));
   const rows = [headerRow];
-  // Each card is an <a> direct child
-  const cards = element.querySelectorAll(':scope > a');
-  cards.forEach((card) => {
-    // Get card image (first img inside first child div)
-    const imgDiv = card.querySelector('div.utility-aspect-2x3');
-    let img = null;
-    if (imgDiv) {
-      img = imgDiv.querySelector('img');
+
+  cards.forEach(card => {
+    // First cell: image (reference the <img> element inside the aspect div)
+    let imageEl = null;
+    const aspectDiv = card.querySelector('.utility-aspect-2x3');
+    if (aspectDiv) {
+      imageEl = aspectDiv.querySelector('img');
     }
-    // Compose text cell
-    // For this block, we want to reference the full content as a single cell,
-    // preserving headings and inline elements, and not clone or create elements unnecessarily
-    // We'll create a wrapper div and move children in order
-    const textCell = document.createElement('div');
-    // Tag/date row
-    const tagDate = card.querySelector('.flex-horizontal');
-    if (tagDate) {
-      // Use reference, not clone
-      textCell.appendChild(tagDate);
+
+    // Second cell: text (category/tag, date, title)
+    // Get meta info (tag and date)
+    const metaDiv = card.querySelector('.flex-horizontal');
+    let tagText = '', dateText = '';
+    if (metaDiv) {
+      const tagDiv = metaDiv.querySelector('.tag');
+      if (tagDiv) tagText = tagDiv.textContent.trim();
+      const dateDiv = metaDiv.querySelector('.paragraph-sm');
+      if (dateDiv) dateText = dateDiv.textContent.trim();
     }
-    // Heading
-    const heading = card.querySelector('h3');
-    if (heading) {
-      textCell.appendChild(heading);
+    // Get card title
+    const titleEl = card.querySelector('h3, .h4-heading');
+
+    // Build the second cell
+    const cellFrag = document.createElement('div');
+    // Add tag & date in a single line, if present
+    if (tagText || dateText) {
+      const metaLine = document.createElement('div');
+      if (tagText) {
+        const tagSpan = document.createElement('span');
+        tagSpan.textContent = tagText;
+        metaLine.appendChild(tagSpan);
+      }
+      if (tagText && dateText) {
+        metaLine.appendChild(document.createTextNode(' '));
+      }
+      if (dateText) {
+        const dateSpan = document.createElement('span');
+        dateSpan.textContent = dateText;
+        metaLine.appendChild(dateSpan);
+      }
+      cellFrag.appendChild(metaLine);
     }
-    rows.push([
-      img ? img : '',
-      textCell
-    ]);
+    // Add the heading/title
+    if (titleEl) {
+      cellFrag.appendChild(titleEl);
+    }
+
+    rows.push([imageEl, cellFrag]);
   });
-  // Build table
+
+  // Create the table block and replace the original element
   const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

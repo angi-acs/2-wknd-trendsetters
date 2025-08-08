@@ -1,60 +1,52 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row
-  const cells = [['Cards (cards33)']];
-
-  // Get all card anchor elements (each card is an <a> block)
+  // Header row exactly as in example
+  const headerRow = ['Cards (cards33)'];
+  // Select all card anchor elements (direct children, cards)
   const cardLinks = Array.from(element.querySelectorAll(':scope > a'));
 
-  cardLinks.forEach((card) => {
-    // First cell: image (must be referenced, not cloned)
+  const rows = cardLinks.map(card => {
+    // Card image (first img in card)
     const img = card.querySelector('img');
-    // Second cell: text content
-    // Find the main inner content div (contains heading, text, etc)
-    let textCell = null;
-    const innerGrids = card.querySelectorAll('.w-layout-grid');
-    for (const grid of innerGrids) {
-      if (grid.querySelector('h3')) {
-        textCell = grid;
-        break;
-      }
-    }
-    if (!textCell) textCell = card;
 
-    const textElems = [];
-    // Tag and read time (may or may not be present)
-    const tagTimeRow = textCell.querySelector('.flex-horizontal');
-    if (tagTimeRow) {
-      Array.from(tagTimeRow.children).forEach(child => {
-        // Tag or read time divs
-        textElems.push(child);
-      });
+    // Find the inner grid holding the content next to the image
+    const innerGrid = card.querySelector('.w-layout-grid');
+    // Within that, the div after the img contains all text content
+    let textDiv = null;
+    if (innerGrid) {
+      const children = Array.from(innerGrid.children);
+      textDiv = children.find(child => child !== img);
     }
-    // Heading
-    const heading = textCell.querySelector('h3');
-    if (heading) textElems.push(heading);
-    // Description
-    const desc = textCell.querySelector('p');
-    if (desc) textElems.push(desc);
-    // CTA (Read link)
-    // Look for a div with text 'Read' that's not part of tag/time
-    // Only include if it's not already included
-    const divs = Array.from(textCell.querySelectorAll(':scope > div'));
-    let foundRead = false;
-    for (const div of divs) {
-      if (div.textContent.trim() === 'Read' && !div.classList.contains('tag') && !div.classList.contains('flex-horizontal') && !div.classList.contains('paragraph-sm')) {
-        textElems.push(div);
-        foundRead = true;
-        break;
+    // If fallback is needed, use the first div after img
+    if (!textDiv) {
+      textDiv = card.querySelector('div:not([class*="w-layout-grid"]):not(:has(img))');
+    }
+    // Accumulate text content
+    const content = [];
+    if (textDiv) {
+      // Tag row (if present)
+      const tagRow = textDiv.querySelector('.flex-horizontal');
+      if (tagRow) content.push(tagRow);
+      // Heading (h3 or .h4-heading)
+      const heading = textDiv.querySelector('h3, .h4-heading');
+      if (heading) content.push(heading);
+      // Description (first p)
+      const desc = textDiv.querySelector('p');
+      if (desc) content.push(desc);
+      // CTA ("Read") - typically the last div under textDiv
+      // Find all direct child divs, take last one if it matches 'Read'
+      const childDivs = Array.from(textDiv.children).filter(el => el.tagName === 'DIV');
+      if (childDivs.length) {
+        const ctaDiv = childDivs[childDivs.length - 1];
+        if (ctaDiv && ctaDiv.textContent.trim().toLowerCase() === 'read') {
+          content.push(ctaDiv);
+        }
       }
     }
-    // Compose the row: [image, [text content]]
-    cells.push([
-      img || '',
-      textElems.length ? textElems : ''
-    ]);
+    return [img, content];
   });
 
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  const cells = [headerRow, ...rows];
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }
