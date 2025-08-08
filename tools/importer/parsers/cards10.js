@@ -1,55 +1,43 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
   // Table header as per example
-  const headerRow = ['Cards (cards10)'];
+  const rows = [['Cards (cards10)']];
 
-  // Find all direct card links
-  const cards = Array.from(element.querySelectorAll(':scope > a.card-link'));
-
-  const rows = cards.map(card => {
-    // Image: first direct div > img
-    const imgDiv = card.querySelector(':scope > div');
-    const img = imgDiv ? imgDiv.querySelector('img') : null;
-
-    // Content
-    const contentDiv = card.querySelector('.utility-padding-all-1rem');
-    // Tag (optional; not visually prominent in example, so not bolded in table)
-    let tagNode = null;
-    const tagDiv = contentDiv ? contentDiv.querySelector('.tag-group .tag') : null;
-    if (tagDiv) {
-      tagNode = tagDiv;
-    }
-    // Title (h3, should be strong or h4 inside cell)
-    let titleNode = null;
-    const h3 = contentDiv ? contentDiv.querySelector('h3') : null;
-    if (h3) {
-      titleNode = h3;
-    }
-    // Description (p)
-    let descNode = null;
-    const p = contentDiv ? contentDiv.querySelector('p') : null;
-    if (p) {
-      descNode = p;
+  // Get all direct card-link children (cards)
+  const cards = element.querySelectorAll(':scope > a.card-link');
+  cards.forEach(card => {
+    // Image cell
+    let img = null;
+    // The image is within a utility-aspect-3x2 div inside the card
+    const imgDiv = card.querySelector('.utility-aspect-3x2');
+    if (imgDiv) {
+      img = imgDiv.querySelector('img');
     }
 
-    // Compose text cell contents (tag, heading, paragraph as nodes)
-    const cellNodes = [];
-    if (tagNode) {
-      cellNodes.push(tagNode);
+    // Text cell content
+    const textContainer = card.querySelector('.utility-padding-all-1rem');
+    const textContent = [];
+    if (textContainer) {
+      // Tag (optional)
+      const tag = textContainer.querySelector('.tag');
+      if (tag) {
+        textContent.push(tag);
+      }
+      // Heading (optional)
+      const heading = textContainer.querySelector('h3');
+      if (heading) {
+        textContent.push(heading);
+      }
+      // Description (optional)
+      const desc = textContainer.querySelector('p');
+      if (desc) {
+        textContent.push(desc);
+      }
     }
-    if (titleNode) {
-      cellNodes.push(titleNode);
-    }
-    if (descNode) {
-      cellNodes.push(descNode);
-    }
-
-    // Each row: [image, text content]
-    return [img ? img : '', cellNodes];
+    // Push row for this card
+    rows.push([img, textContent]);
   });
 
-  // Compose the table
-  const tableCells = [headerRow, ...rows];
-  const block = WebImporter.DOMUtils.createTable(tableCells, document);
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(table);
 }

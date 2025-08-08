@@ -1,47 +1,43 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header per the requirements
+  // Cards (cards17) block - image + text support
   const headerRow = ['Cards (cards17)'];
-  const rows = [headerRow];
-
-  // Each direct child div is a card
+  // Each direct child div is a card container
   const cardDivs = element.querySelectorAll(':scope > div');
-  cardDivs.forEach(cardDiv => {
-    // Find the image in the card
-    const img = cardDiv.querySelector('img');
-
-    // Flexible: Gather all non-image content for the text cell
-    // Gather all elements except images
-    const textContentElements = Array.from(cardDiv.childNodes)
-      .filter(node => {
-        // Exclude images
-        if (node.nodeType === 1 && node.tagName.toLowerCase() === 'img') return false;
-        // Exclude empty text nodes
-        if (node.nodeType === 3 && !node.textContent.trim()) return false;
-        return true;
-      });
-
-    let textCellContent;
-    if (textContentElements.length > 0) {
-      // If there is actual content, use it all
-      textCellContent = textContentElements;
-    } else if (img && img.alt && img.alt.trim()) {
-      // Fallback: Use alt text as a <strong> if present
-      const strong = document.createElement('strong');
-      strong.textContent = img.alt;
-      textCellContent = strong;
+  const rows = [];
+  cardDivs.forEach((cardDiv) => {
+    // Image extraction (first cell)
+    let img = cardDiv.querySelector('img');
+    // Try to extract text content (second cell)
+    // Accepts any heading, paragraphs, links, or generic text
+    let textContent = '';
+    // Look for text elements that are siblings of the image, or inside the cardDiv
+    const candidates = Array.from(cardDiv.childNodes).filter(node => {
+      // Only accept element nodes that are not images
+      return node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'IMG';
+    });
+    if (candidates.length > 0) {
+      // If there are text elements, combine into a fragment
+      const fragment = document.createDocumentFragment();
+      candidates.forEach(el => fragment.appendChild(el));
+      textContent = fragment;
     } else {
-      // No text at all
-      textCellContent = '';
+      // Check for stray text nodes
+      const textNodes = Array.from(cardDiv.childNodes).filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+      if (textNodes.length > 0) {
+        const span = document.createElement('span');
+        span.textContent = textNodes.map(n => n.textContent.trim()).join(' ');
+        textContent = span;
+      } else {
+        textContent = '';
+      }
     }
-
     rows.push([
-      img,
-      textCellContent
+      img || '',
+      textContent
     ]);
   });
-
-  // Create and replace
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  const cells = [headerRow, ...rows];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

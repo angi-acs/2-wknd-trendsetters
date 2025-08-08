@@ -1,37 +1,38 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Header row: block name exactly as specified
+  // 1. Table header row
   const headerRow = ['Hero (hero6)'];
 
-  // 2. Second row: background image (img element, if present)
+  // 2. Find the background image (row 2)
   let bgImg = null;
-  // Find the background image by searching for a direct descendant img in the first grid cell
-  const gridDivs = element.querySelectorAll(':scope > .w-layout-grid > div');
-  if (gridDivs.length > 0) {
-    // Typically background image is in the first grid cell
-    const possibleImg = gridDivs[0].querySelector('img');
-    if (possibleImg) bgImg = possibleImg;
+  // Look for an img with class 'cover-image' inside any grid-layout div
+  const gridDivs = element.querySelectorAll(':scope > .w-layout-grid');
+  for (const grid of gridDivs) {
+    const img = grid.querySelector('img.cover-image');
+    if (img) {
+      bgImg = img;
+      break;
+    }
   }
+  // If not found, leave the cell empty
+  const imageRow = [bgImg ? bgImg : ''];
 
-  // 3. Third row: headline, subheading, and CTA (all content card)
-  let cardContent = null;
-  // Card is nested inside the second grid column
-  if (gridDivs.length > 1) {
-    const card = gridDivs[1].querySelector('.card');
-    if (card) cardContent = card;
+  // 3. Find the card content: heading, subheading, CTAs (row 3)
+  let contentCell = '';
+  // Card is inside grid-layout > .container > grid-layout > .card
+  for (const grid of element.querySelectorAll('.w-layout-grid')) {
+    const card = grid.querySelector('.card');
+    if (card) {
+      contentCell = card;
+      break;
+    }
   }
+  const contentRow = [contentCell];
 
-  // Compose table rows
-  // If background image or content is missing, provide empty string to maintain rows
-  const rows = [
-    headerRow,
-    [bgImg || ''],
-    [cardContent || '']
-  ];
+  // 4. Assemble the table
+  const cells = [headerRow, imageRow, contentRow];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
 
-  // Create table using WebImporter.DOMUtils.createTable
-  const block = WebImporter.DOMUtils.createTable(rows, document);
-
-  // Replace the original element with the block table
-  element.replaceWith(block);
+  // 5. Replace the original element
+  element.replaceWith(table);
 }

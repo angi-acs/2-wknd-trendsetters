@@ -1,19 +1,19 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid-layout which contains the columns
-  const grid = element.querySelector('.grid-layout');
+  // Find the columns container
+  const container = element.querySelector('.container');
+  if (!container) return;
+  const grid = container.querySelector('.grid-layout');
   if (!grid) return;
-
-  // Get the immediate children (columns)
+  // Get all direct child columns
   const columns = Array.from(grid.children);
-
-  // Match the block format: header row (one cell), then content row (as many columns as found)
+  // Header row: should be an array with only one cell
   const headerRow = ['Columns (columns3)'];
-  const contentRow = columns.map((col) => col);
-
-  // Only create additional (empty) columns if you must always have 3 columns in the second row.
-  // But the correct behavior is: use as many columns as in the HTML input, not always 3.
-
-  const table = WebImporter.DOMUtils.createTable([headerRow, contentRow], document);
+  // Content row: one cell for each column
+  const contentRow = columns;
+  // Structure table with a single-cell header and a content row matching the number of columns
+  const cells = [headerRow, contentRow];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Replace the original element
   element.replaceWith(table);
 }

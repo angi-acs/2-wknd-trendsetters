@@ -1,60 +1,38 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row
+  // 1. Header row
   const headerRow = ['Hero (hero12)'];
 
-  // Find the background image (absolute-positioned image in the first grid cell)
-  let bgImg = null;
-  const gridDivs = element.querySelectorAll(':scope > .w-layout-grid > div');
-  if (gridDivs.length > 0) {
-    const maybeImg = gridDivs[0].querySelector('img');
-    if (maybeImg) bgImg = maybeImg;
-  }
-
-  // Find main content (the second grid cell)
-  let contentCell = '';
-  if (gridDivs.length > 1) {
-    // This div contains the card with all the text, side image, cta, etc
-    const container = gridDivs[1];
-    const cardBody = container.querySelector('.card-body');
-    if (cardBody) {
-      const grid = cardBody.querySelector('.grid-layout');
-      if (grid) {
-        // Side image (if any)
-        const sideImg = grid.querySelector('img');
-        // Text and CTA block (div)
-        let textCtaDiv = null;
-        const children = Array.from(grid.children);
-        for (const child of children) {
-          if (child.tagName === 'DIV') {
-            textCtaDiv = child;
-            break;
-          }
-        }
-        // Compose: side image (if present), then text/cta block (if present)
-        const cellArr = [];
-        if (sideImg) cellArr.push(sideImg);
-        if (textCtaDiv) cellArr.push(textCtaDiv);
-        if (cellArr.length) {
-          contentCell = cellArr;
-        } else {
-          contentCell = cardBody;
-        }
-      } else {
-        contentCell = cardBody;
-      }
-    } else {
-      contentCell = container;
+  // 2. Background image (should be the absolutely positioned image)
+  let bgImg = '';
+  const possibleImgs = element.querySelectorAll('img');
+  // Look for an image that is absolutely positioned (the background, not the card image)
+  for (const img of possibleImgs) {
+    if (img.classList.contains('utility-position-absolute')) {
+      bgImg = img;
+      break;
     }
   }
 
-  // Assemble table
+  // 3. Content: headline, subheading, CTA, etc. (should be the card body)
+  let contentCell = '';
+  const cardBody = element.querySelector('.card-body');
+  if (cardBody) {
+    contentCell = cardBody;
+  } else {
+    // Fallback: try to get the card itself
+    const card = element.querySelector('.card');
+    if (card) {
+      contentCell = card;
+    }
+  }
+
+  // Compose the block table as specified
   const cells = [
     headerRow,
-    [bgImg ? bgImg : ''],
+    [bgImg],
     [contentCell],
   ];
-
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

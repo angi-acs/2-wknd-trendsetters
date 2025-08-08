@@ -1,53 +1,34 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Define header row exactly as in example
+  // Header row: must be a single cell
   const headerRow = ['Columns (columns11)'];
 
-  // MAIN ROW extraction
-  // Left column: intro content block
-  let leftCol = null;
-  let rightCol = null;
+  // Find the main container
+  const container = element.querySelector('.container');
+  // Top grid: left (headline), right (body)
+  const topGrid = container.querySelector('.grid-layout.tablet-1-column');
+  const leftCol = topGrid.children[0];
+  const rightCol = topGrid.children[1];
 
-  // Find the main grid (the intro and author side)
-  const mainGrid = element.querySelector('.grid-layout.tablet-1-column');
-  if (mainGrid) {
-    const cols = mainGrid.children;
-    if (cols.length >= 2) {
-      const leftColContainer = document.createElement('div');
-      // Add eyebrow and heading
-      Array.from(cols[0].children).forEach(child => {
-        leftColContainer.appendChild(child);
-      });
-      // Add description
-      const desc = cols[1].querySelector('.rich-text, .w-richtext');
-      if (desc) leftColContainer.appendChild(desc);
-      // Add author block, includes avatar, name/date/read-time
-      const authorRow = cols[1].querySelector('.grid-layout');
-      if (authorRow) leftColContainer.appendChild(authorRow);
-      // Add button (Read more)
-      const btn = cols[1].querySelector('.button, .w-button');
-      if (btn) leftColContainer.appendChild(btn);
-      leftCol = leftColContainer;
-    }
-  }
-
-  // Right column: images block
-  const imageGrid = element.querySelector('.grid-layout.mobile-portrait-1-column');
-  if (imageGrid) {
-    const rightColContainer = document.createElement('div');
-    Array.from(imageGrid.querySelectorAll('img')).forEach(img => {
-      rightColContainer.appendChild(img);
-    });
-    rightCol = rightColContainer;
-  }
-
-  // Compose rows for table (must be 2 columns, like example)
-  const cells = [
-    headerRow,
-    [leftCol, rightCol]
+  // Bottom grid: two images
+  const bottomGrid = element.querySelector('.w-layout-grid.grid-layout.mobile-portrait-1-column');
+  const bottomCells = Array.from(bottomGrid ? bottomGrid.children : []);
+  // Ensure two columns in bottom row
+  const secondContentRow = [
+    bottomCells[0] || document.createElement('div'),
+    bottomCells[1] || document.createElement('div')
   ];
 
-  // Create block table and replace original
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  // First content row (two columns)
+  const firstContentRow = [leftCol, rightCol];
+
+  // Compose table: header row is single column, then rows with two columns
+  const cells = [
+    headerRow, // single-cell header row
+    firstContentRow,
+    secondContentRow
+  ];
+
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

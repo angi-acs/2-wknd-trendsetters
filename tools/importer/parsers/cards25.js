@@ -1,27 +1,44 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Cards (cards25) table header
-  const headerRow = ['Cards (cards25)'];
-  const rows = [headerRow];
+  // Header row as specified
+  const cells = [['Cards (cards25)']];
 
-  // All immediate children of the grid are possible card containers
+  // For each direct child (potential card) of the grid container
   const children = Array.from(element.querySelectorAll(':scope > div'));
 
-  children.forEach(card => {
-    // Find the main image, always required for a card row
-    const img = card.querySelector('img');
-    if (!img) return;
+  children.forEach((cardEl) => {
+    // Always get the img for first cell of the row (the card image)
+    const img = cardEl.querySelector('img');
+    if (!img) return; // Only process items with an image, per block definition
 
-    // Find title + description container (optional)
+    // Find the most relevant text content (usually in .utility-padding-all-2rem)
     let textCell = '';
-    // On cards with text, it is inside .utility-padding-all-2rem
-    const textWrapper = card.querySelector('.utility-padding-all-2rem');
-    if (textWrapper) {
-      textCell = textWrapper;
+    let textSource = cardEl.querySelector('.utility-padding-all-2rem');
+    if (!textSource) {
+      // Sometimes there is no such div, try .utility-position-relative
+      textSource = cardEl.querySelector('.utility-position-relative');
     }
-    rows.push([img, textCell]);
+    if (!textSource) {
+      // Fallback to the cardEl itself
+      textSource = cardEl;
+    }
+
+    // Extract heading and description, reference actual elements (not clone)
+    const h3 = textSource.querySelector('h3');
+    const p = textSource.querySelector('p');
+    if (h3 || p) {
+      const frag = document.createDocumentFragment();
+      if (h3) frag.appendChild(h3);
+      if (p) frag.appendChild(p);
+      textCell = frag.childNodes.length ? frag : '';
+    }
+    // If no heading or paragraph was found, just leave text cell blank
+
+    // Add the card row to the table
+    cells.push([img, textCell]);
   });
 
-  const block = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(block);
+  // Create the block table and replace the original element
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

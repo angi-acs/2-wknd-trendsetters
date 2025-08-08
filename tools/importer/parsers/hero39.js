@@ -1,51 +1,38 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header row
+  // 1. Header row (block name, exact per example)
   const headerRow = ['Hero (hero39)'];
 
-  // Find the background image: the first <img> in the structure
-  let backgroundImg = null;
-  const imgEls = element.querySelectorAll('img');
-  if (imgEls.length > 0) {
-    backgroundImg = imgEls[0]; // reference existing element
+  // 2. Get the background image (as the only main image in the first .w-layout-grid child)
+  const gridLayout = element.querySelector('.w-layout-grid');
+  if (!gridLayout) return;
+  const gridChildren = gridLayout.querySelectorAll(':scope > div');
+  if (gridChildren.length < 2) return;
+
+  const imageContainer = gridChildren[0];
+  const img = imageContainer.querySelector('img');
+  const imageRow = [img ? img : ''];
+
+  // 3. Get text content: h1, p, button(s)
+  const contentContainer = gridChildren[1];
+  const textElements = [];
+  // Find the heading
+  const h1 = contentContainer.querySelector('h1');
+  if (h1) textElements.push(h1);
+  // Find the paragraph (subheading)
+  const p = contentContainer.querySelector('p');
+  if (p) textElements.push(p);
+  // Find the CTA(s) (a.button...)
+  const btnGroup = contentContainer.querySelector('.button-group');
+  if (btnGroup) {
+    // May be several buttons
+    const buttons = btnGroup.querySelectorAll('a');
+    buttons.forEach(btn => textElements.push(btn));
   }
-  const imageRow = [backgroundImg ? backgroundImg : ''];
+  const contentRow = [textElements];
 
-  // Find the text panel: headline, paragraph(s), button(s)
-  // In this HTML, it's the 2nd (right) column of the grid
-  let contentCellParts = [];
-
-  // Get the direct div children of .grid-layout (the main layout grid)
-  const mainGrid = element.querySelector('.grid-layout');
-  if (mainGrid) {
-    const gridChildren = mainGrid.querySelectorAll(':scope > div');
-    // The right side content is in the second div
-    if (gridChildren.length > 1) {
-      const textContainer = gridChildren[1];
-      // It in turn contains a grid with h1 and a flex container
-      const innerGrid = textContainer.querySelector('.grid-layout');
-      if (innerGrid) {
-        // Add the h1 if present
-        const h1 = innerGrid.querySelector('h1');
-        if (h1) contentCellParts.push(h1);
-        // Find flex container with paragraph and button group
-        const flex = innerGrid.querySelector('.flex-vertical');
-        if (flex) {
-          // Paragraph(s)
-          flex.querySelectorAll('p').forEach(p => contentCellParts.push(p));
-          // Button group (may contain multiple CTAs)
-          const buttonGroup = flex.querySelector('.button-group');
-          if (buttonGroup) {
-            buttonGroup.querySelectorAll('a').forEach(a => contentCellParts.push(a));
-          }
-        }
-      }
-    }
-  }
-  const contentRow = [contentCellParts.length ? contentCellParts : ''];
-
-  // Build block table (always 1 column, 3 rows)
+  // 4. Compose block table
   const cells = [headerRow, imageRow, contentRow];
-  const blockTable = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(blockTable);
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

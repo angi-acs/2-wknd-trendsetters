@@ -1,59 +1,45 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header matches exact block name/variant from example
+  // Build the header row with the exact block name
   const headerRow = ['Columns (columns5)'];
 
-  // Find the main grid with two columns
-  const grid = element.querySelector('.grid-layout');
-  let leftCol, rightCol;
-  if (grid) {
-    // get direct children of grid (should be 2: content & image)
-    const topCols = Array.from(grid.children);
-    // Defensive: look for a content container and an image
-    // First column is usually a nested grid (with heading, text, buttons)
-    if (topCols.length === 2) {
-      // left: nested grid, right: image
-      const leftGrid = topCols[0];
-      // Unwrap nested grid/container if present
-      let content = [];
-      if (leftGrid.classList.contains('grid-layout') || leftGrid.classList.contains('container')) {
-        content = Array.from(leftGrid.children);
-      } else {
-        content = [leftGrid];
-      }
-      // For each child of the left grid, collect into wrapper div
-      const leftContentDiv = document.createElement('div');
-      content.forEach(child => leftContentDiv.appendChild(child));
-      leftCol = leftContentDiv;
+  // Find the main grid containing the two columns (text content and image)
+  const mainGrid = element.querySelector(':scope > .w-layout-grid');
+  if (!mainGrid) return;
 
-      // right: image element (could be direct img or wrapped)
-      rightCol = topCols[1];
-      // If not an img, find the img inside
-      if (rightCol && rightCol.tagName !== 'IMG') {
-        const img = rightCol.querySelector('img');
-        if (img) rightCol = img;
-      }
-      // If it's an img already, that's fine
+  // The children of this grid should be two: a grid for the left content and an image for the right
+  let leftContent = null;
+  let rightImage = null;
+
+  // Find the left column (nested grid) and right column (img)
+  Array.from(mainGrid.children).forEach(child => {
+    if (child.tagName === 'IMG') {
+      rightImage = child;
     } else {
-      // fallback: treat whole grid as one column
-      leftCol = grid;
-      rightCol = null;
+      leftContent = child;
     }
-  } else {
-    // fallback: use all direct children as columns
-    const children = Array.from(element.children);
-    leftCol = children[0] || null;
-    rightCol = children[1] || null;
+  });
+
+  // For left content, include all direct children as a chunk (reference, don't clone)
+  let leftCell = [];
+  if (leftContent) {
+    // If it's a grid, flatten its direct children (likely one column)
+    const possibleGrid = leftContent.classList.contains('w-layout-grid') ? leftContent : null;
+    if (possibleGrid) {
+      // Take all grid children as content
+      Array.from(possibleGrid.children).forEach(col => {
+        leftCell.push(col);
+      });
+    } else {
+      leftCell = Array.from(leftContent.children);
+    }
   }
 
-  // If leftCol or rightCol is null, ensure they're empty
-  // This prevents issues with missing columns
-  const cells = [
-    headerRow,
-    [leftCol || '', rightCol || '']
-  ];
+  // Build columns row (preserve order: left column, right image)
+  const columnsRow = [leftCell, rightImage].filter(Boolean);
 
-  // Create table and replace original element
+  // Assemble and replace with block table
+  const cells = [headerRow, columnsRow];
   const block = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(block);
 }

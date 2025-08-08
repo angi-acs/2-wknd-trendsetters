@@ -1,42 +1,49 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row from spec
-  const headerRow = ['Columns (columns18)'];
-  
-  // Find the grid layout
-  const grid = element.querySelector('.w-layout-grid');
+  // Find the grid layout (columns)
+  const grid = element.querySelector('.grid-layout');
   if (!grid) return;
+  // Get all direct children of the grid
+  const columns = Array.from(grid.children);
 
-  // The grid contains 3 children: left (text), middle (ul), right (image)
-  // Get all grid children
-  const gridChildren = Array.from(grid.children);
+  // Variables for expected sections
+  let leftContent = null;
+  let rightContent = null;
 
-  // Identify column elements by tag
-  let leftCol = null, middleCol = null, rightCol = null;
-  gridChildren.forEach(child => {
-    if (!leftCol && child.tagName === 'DIV' && child.querySelector('h2, h3, p')) {
-      leftCol = child;
-    } else if (!middleCol && child.tagName === 'UL') {
-      middleCol = child;
-    } else if (!rightCol && child.tagName === 'IMG') {
-      rightCol = child;
-    }
-  });
+  // From HTML: first content (h2/h3/p), then ul (contacts), then img
+  // We'll combine h2/h3/p and ul for left column, img for right column
 
-  // Layout: leftCol (the heading and copy), middleCol (the contact info), rightCol (the image)
-  // The screenshot shows left column = leftCol + middleCol, right column = rightCol
-  const leftColumnContent = [];
-  if (leftCol) leftColumnContent.push(leftCol);
-  if (middleCol) leftColumnContent.push(middleCol);
-  const rightColumnContent = rightCol ? [rightCol] : [];
+  // Find the info content (headings and paragraph)
+  const infoBlock = columns.find(col => col.querySelector('h2, h3, p'));
+  // Find ul contact list
+  const contactUl = columns.find(col => col.tagName === 'UL');
+  // Find image
+  const imgBlock = columns.find(col => col.tagName === 'IMG');
 
-  // Compose the table cells row
-  const cellsRow = [leftColumnContent, rightColumnContent];
-  
-  // Build the table rows
-  const tableArr = [headerRow, cellsRow];
-  const block = WebImporter.DOMUtils.createTable(tableArr, document);
+  // Compose left column: info content + contact list
+  if (infoBlock && contactUl) {
+    const leftDiv = document.createElement('div');
+    leftDiv.appendChild(infoBlock);
+    leftDiv.appendChild(contactUl);
+    leftContent = leftDiv;
+  } else if (infoBlock) {
+    leftContent = infoBlock;
+  } else if (contactUl) {
+    leftContent = contactUl;
+  }
 
-  // Replace the original element
+  // Compose right column: image if present
+  if (imgBlock) {
+    rightContent = imgBlock;
+  }
+
+  // Table cells array: header, second row with 2 cols as in example
+  const cells = [
+    ['Columns (columns18)'],
+    [leftContent, rightContent]
+  ];
+
+  // Create and replace
+  const block = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(block);
 }
