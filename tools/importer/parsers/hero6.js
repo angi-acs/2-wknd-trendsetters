@@ -1,38 +1,34 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Table header row
+  // Table header must match exactly
   const headerRow = ['Hero (hero6)'];
 
-  // 2. Find the background image (row 2)
-  let bgImg = null;
-  // Look for an img with class 'cover-image' inside any grid-layout div
-  const gridDivs = element.querySelectorAll(':scope > .w-layout-grid');
-  for (const grid of gridDivs) {
-    const img = grid.querySelector('img.cover-image');
-    if (img) {
-      bgImg = img;
-      break;
+  // Find the background image (first img.cover-image in the header)
+  const bgImg = element.querySelector('img.cover-image');
+  const bgImgRow = [bgImg ? bgImg : ''];
+
+  // Find the card containing the actual text and CTAs
+  const card = element.querySelector('.card');
+  const contentEls = [];
+  if (card) {
+    // Title (h1)
+    const h1 = card.querySelector('h1');
+    if (h1) contentEls.push(h1);
+    // Subheading (p.subheading)
+    const subheading = card.querySelector('p.subheading');
+    if (subheading) contentEls.push(subheading);
+    // Call-to-actions (all links in .button-group)
+    const buttonGroup = card.querySelector('.button-group');
+    if (buttonGroup) {
+      // Don't wrap in a new element; just include links in order
+      const links = Array.from(buttonGroup.querySelectorAll('a'));
+      if (links.length) contentEls.push(...links);
     }
   }
-  // If not found, leave the cell empty
-  const imageRow = [bgImg ? bgImg : ''];
+  const contentRow = [contentEls.length ? contentEls : ''];
 
-  // 3. Find the card content: heading, subheading, CTAs (row 3)
-  let contentCell = '';
-  // Card is inside grid-layout > .container > grid-layout > .card
-  for (const grid of element.querySelectorAll('.w-layout-grid')) {
-    const card = grid.querySelector('.card');
-    if (card) {
-      contentCell = card;
-      break;
-    }
-  }
-  const contentRow = [contentCell];
-
-  // 4. Assemble the table
-  const cells = [headerRow, imageRow, contentRow];
+  // Compose the table
+  const cells = [headerRow, bgImgRow, contentRow];
   const table = WebImporter.DOMUtils.createTable(cells, document);
-
-  // 5. Replace the original element
   element.replaceWith(table);
 }

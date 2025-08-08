@@ -1,43 +1,44 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header as per example
-  const rows = [['Cards (cards10)']];
+  // Cards (cards10) header row
+  const headerRow = ['Cards (cards10)'];
 
-  // Get all direct card-link children (cards)
-  const cards = element.querySelectorAll(':scope > a.card-link');
-  cards.forEach(card => {
-    // Image cell
+  // Get all cards (each card is an <a> child of the block element)
+  const cardLinks = Array.from(element.querySelectorAll(':scope > a'));
+
+  const rows = cardLinks.map(card => {
+    // First cell: image
     let img = null;
-    // The image is within a utility-aspect-3x2 div inside the card
-    const imgDiv = card.querySelector('.utility-aspect-3x2');
+    // The image is inside the first <div> inside each card
+    const imgDiv = card.querySelector(':scope > div');
     if (imgDiv) {
       img = imgDiv.querySelector('img');
     }
 
-    // Text cell content
-    const textContainer = card.querySelector('.utility-padding-all-1rem');
-    const textContent = [];
-    if (textContainer) {
+    // Second cell: tag (if present), heading, description
+    const textDiv = card.querySelector('.utility-padding-all-1rem');
+    let textCellContent = [];
+    if (textDiv) {
       // Tag (optional)
-      const tag = textContainer.querySelector('.tag');
+      const tag = textDiv.querySelector('.tag');
       if (tag) {
-        textContent.push(tag);
+        textCellContent.push(tag);
       }
-      // Heading (optional)
-      const heading = textContainer.querySelector('h3');
+      // Heading (mandatory)
+      const heading = textDiv.querySelector('h3, .h4-heading');
       if (heading) {
-        textContent.push(heading);
+        textCellContent.push(heading);
       }
-      // Description (optional)
-      const desc = textContainer.querySelector('p');
+      // Description (mandatory)
+      const desc = textDiv.querySelector('p');
       if (desc) {
-        textContent.push(desc);
+        textCellContent.push(desc);
       }
     }
-    // Push row for this card
-    rows.push([img, textContent]);
+    return [img, textCellContent];
   });
 
-  const table = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(table);
+  const tableData = [headerRow, ...rows];
+  const block = WebImporter.DOMUtils.createTable(tableData, document);
+  element.replaceWith(block);
 }

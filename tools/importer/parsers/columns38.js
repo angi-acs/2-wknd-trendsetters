@@ -1,15 +1,32 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row: must be a single cell with the block name
+  // Ensure table header matches the example, one column only
   const headerRow = ['Columns (columns38)'];
 
-  // Content row: each direct child div is a column
+  // Get all grid columns (direct children)
   const columnDivs = Array.from(element.querySelectorAll(':scope > div'));
 
-  // Table data: header row (single cell), then one content row with N cells
-  const tableData = [headerRow, columnDivs];
+  // For each column, build a cell: collect all child nodes (images, text, etc.)
+  const columnCells = columnDivs.map((colDiv) => {
+    // If the column contains only one child, just use it
+    if (colDiv.childElementCount === 1) {
+      return colDiv.firstElementChild;
+    }
+    // If there are multiple children, include all (image, text, etc.)
+    const nodes = Array.from(colDiv.childNodes).filter(node => {
+      // Exclude empty text nodes
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent.trim().length > 0;
+      }
+      return true;
+    });
+    return nodes;
+  });
 
-  // Create table and replace original element
-  const block = WebImporter.DOMUtils.createTable(tableData, document);
-  element.replaceWith(block);
+  // Only a single block row is present in this HTML; no additional rows found
+  // If more structure existed (text, buttons, etc.), add additional rows as needed
+  const rows = [headerRow, columnCells];
+
+  const blockTable = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(blockTable);
 }

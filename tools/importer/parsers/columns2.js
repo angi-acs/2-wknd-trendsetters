@@ -1,48 +1,39 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Defensive: check container
+  // Get main content grid
   const container = element.querySelector('.container');
   if (!container) return;
-  // Find the grid
-  const grid = container.querySelector('.w-layout-grid');
+  const grid = container.querySelector('.grid-layout');
   if (!grid) return;
 
-  // The left hero content (the large card)
-  const leftHero = grid.children[0];
+  const children = Array.from(grid.children);
+  // Defensive: Make sure there are enough columns
+  if (children.length < 3) return;
 
-  // The right column content: consists of 2 vertical stacks
-  // First vertical stack: two cards with image/tag/heading/desc
-  // Second vertical stack: series of text cards each separated by divider
-  const rightColParts = [];
+  // LEFT COLUMN: Main card (first grid child)
+  const leftColumn = children[0]; // <a>
 
-  // First right column: the set of image cards
-  if (grid.children.length > 1) {
-    // This is a flex container of a set of 'a.utility-link-content-block' children
-    const firstStack = grid.children[1];
-    const cards = Array.from(firstStack.querySelectorAll(':scope > a.utility-link-content-block'));
-    rightColParts.push(...cards);
+  // RIGHT COLUMN: Stack of cards from next grid children
+  // Each is a .flex-horizontal container with <a> links, <div.divider>
+  // We want all <a> inside both right column containers in order
+  function getAllLinks(parent) {
+    return Array.from(parent.querySelectorAll(':scope > a'));
   }
+  const rightCards1 = getAllLinks(children[1]);
+  const rightCards2 = getAllLinks(children[2]);
+  // Compose all right-side content
+  const rightColumnItems = [...rightCards1, ...rightCards2];
 
-  // Second right column: vertical stack of text cards separated by dividers
-  if (grid.children.length > 2) {
-    const secondStack = grid.children[2];
-    // Each card is an a.utility-link-content-block, each divider is a .divider
-    // We want to add the cards in order, separated by divider if present
-    const children = Array.from(secondStack.children);
-    for (let i = 0; i < children.length; i++) {
-      rightColParts.push(children[i]);
-    }
-  }
+  // Place all right cards into a single container for the right column cell
+  const rightColumnDiv = document.createElement('div');
+  rightColumnItems.forEach(item => rightColumnDiv.appendChild(item));
 
-  // The table requires a header row of ['Columns (columns2)'].
+  // Header row must match exactly
   const headerRow = ['Columns (columns2)'];
-  // The second row has 2 columns: left hero and right stack
-  const columnsRow = [leftHero, rightColParts];
-
-  const table = WebImporter.DOMUtils.createTable([
-    headerRow,
-    columnsRow
-  ], document);
-
-  element.replaceWith(table);
+  // Second row: 2 columns
+  const row = [leftColumn, rightColumnDiv];
+  const cells = [headerRow, row];
+  // Create and replace block table
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

@@ -1,32 +1,25 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row as required by block spec
+  // Only one block table needed, no Section Metadata
+  // Table header must be exactly 'Columns (columns1)'
   const headerRow = ['Columns (columns1)'];
-  
-  // Find the grid that holds the columns
-  const grid = element.querySelector('.grid-layout, [class*="grid-layout"]');
+
+  // Find the grid of columns (multi-column layout)
+  const grid = element.querySelector('.w-layout-grid');
   if (!grid) return;
-  
-  // Get all direct children of the grid, which are columns (e.g., <img>, <div>, etc.)
-  // Use slice() to avoid live node list issues
+
+  // Extract direct children of the grid as columns
   const columns = Array.from(grid.children);
 
-  // Defensive: remove empty columns (should not happen, but safe)
-  const nonEmptyColumns = columns.filter((col) => {
-    // Ignore if column is empty or only whitespace
-    if (!col) return false;
-    // If it's an element and has children or non-empty textContent
-    if (col.children.length > 0) return true;
-    if (col.textContent && col.textContent.trim().length > 0) return true;
-    if (col.tagName === 'IMG' && col.src) return true; // always keep images
-    return false;
-  });
+  // Each column is referenced as-is (no cloning, no creation)
+  // If there are fewer than 2 columns, ensure at least 2 columns for layout consistency
+  // But for this HTML, there are always 2: image and right content
+  const columnsRow = columns.map(col => col);
 
-  // The block expects one cell per column, containing the DOM elements
-  const secondRow = nonEmptyColumns;
-  
-  const cells = [headerRow, secondRow];
-  
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  // Compose cells array: header row, then one row with columns
+  const cells = [headerRow, columnsRow];
+
+  // Create block table and replace original element
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

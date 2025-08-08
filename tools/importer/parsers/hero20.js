@@ -1,46 +1,47 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Set up header row
+  // 1. Table header
   const headerRow = ['Hero (hero20)'];
 
-  // 2. Extract background images (all direct <img> in the collage grid)
-  let backgroundCell = '';
-  const collageGrid = element.querySelector('.desktop-3-column');
-  if (collageGrid) {
-    // Use a div to hold all images together
-    const imgContainer = document.createElement('div');
-    // Only add <img> elements, which exist in the grid
-    collageGrid.querySelectorAll('img').forEach(img => imgContainer.appendChild(img));
-    backgroundCell = imgContainer.childNodes.length ? imgContainer : '';
-  }
-
-  // 3. Extract hero content (headline, subheading, buttons) from content container
-  let contentCell = '';
-  const contentSection = element.querySelector('.ix-hero-scale-3x-to-1x-content .container');
-  if (contentSection) {
-    const cellContents = [];
-    // Headline (h1)
-    const headline = contentSection.querySelector('h1');
-    if (headline) cellContents.push(headline);
-    // Subheading (p)
-    const subheading = contentSection.querySelector('p');
-    if (subheading) cellContents.push(subheading);
-    // Call-to-action buttons (a)
-    const buttonGroup = contentSection.querySelector('.button-group');
-    if (buttonGroup) {
-      buttonGroup.querySelectorAll('a').forEach(btn => cellContents.push(btn));
+  // 2. Extract background image(s)
+  // The actual visual collage is made of images inside the grid-layout within the first .ix-hero-scale-3x-to-1x
+  const collageRoot = element.querySelector('.ix-hero-scale-3x-to-1x .grid-layout');
+  let collageCell = [''];
+  if (collageRoot) {
+    // Get all images in the collage
+    const collageImgs = Array.from(collageRoot.querySelectorAll('img'));
+    if (collageImgs.length > 0) {
+      const collageDiv = document.createElement('div');
+      collageImgs.forEach(img => collageDiv.appendChild(img));
+      collageCell = [collageDiv];
     }
-    contentCell = cellContents.length ? cellContents : '';
+  }
+  // 3. Extract hero content: headline, subheading, CTA(s)
+  // .ix-hero-scale-3x-to-1x-content .container contains the content
+  const contentRoot = element.querySelector('.ix-hero-scale-3x-to-1x-content .container');
+  let contentCell = [''];
+  if (contentRoot) {
+    const contentParts = [];
+    // Headline
+    const h1 = contentRoot.querySelector('h1');
+    if (h1) contentParts.push(h1);
+    // Subheading (typically a <p>)
+    const subheading = contentRoot.querySelector('p');
+    if (subheading) contentParts.push(subheading);
+    // CTA buttons
+    const buttonGroup = contentRoot.querySelector('.button-group');
+    if (buttonGroup) contentParts.push(buttonGroup);
+    contentCell = [contentParts];
   }
 
-  // 4. Create table
+  // 4. Construct table
   const cells = [
-    headerRow,
-    [backgroundCell],
-    [contentCell]
+    headerRow,    // Block name header
+    collageCell,  // Images collage
+    contentCell   // Text & CTA
   ];
-  const block = WebImporter.DOMUtils.createTable(cells, document);
 
-  // 5. Replace the element with the new block table
+  // 5. Replace original element
+  const block = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(block);
 }
