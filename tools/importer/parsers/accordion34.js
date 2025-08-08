@@ -1,47 +1,40 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Prepare table rows: header first
+  // Prepare header row
   const rows = [['Accordion']];
-  // Get all direct accordion children
-  const accordionEls = Array.from(element.querySelectorAll(':scope > .accordion'));
-
-  accordionEls.forEach(acc => {
-    // Title: Find .w-dropdown-toggle > .paragraph-lg (the actual label)
-    let titleEl = acc.querySelector('.w-dropdown-toggle .paragraph-lg');
-    // Defensive: fallback to first direct div inside .w-dropdown-toggle if needed
-    if (!titleEl) {
-      const toggle = acc.querySelector('.w-dropdown-toggle');
-      if (toggle) {
-        titleEl = Array.from(toggle.children).find(child => child.tagName === 'DIV');
-      }
+  // Find all immediate accordion items (direct children)
+  const items = element.querySelectorAll(':scope > .accordion, :scope > .w-dropdown');
+  items.forEach((item) => {
+    // Title cell extraction
+    let titleCell;
+    const toggle = item.querySelector('.w-dropdown-toggle');
+    if (toggle) {
+      // Try to get the actual text container (prefer .paragraph-lg, but fallback to any child text)
+      const label = toggle.querySelector('.paragraph-lg, p, h1, h2, h3, h4, h5, h6, span');
+      titleCell = label ? label : toggle;
+    } else {
+      // Fallback, use first text node or the toggle itself
+      titleCell = item;
     }
-    // Defensive: If still missing title, use empty string
-    if (!titleEl) {
-      titleEl = document.createElement('span');
-      titleEl.textContent = '';
-    }
-
-    // Content: Find .accordion-content (typically nav) and then get the actual content div
-    let contentEl = acc.querySelector('.accordion-content');
-    let bodyContent = contentEl;
-    if (contentEl) {
-      // Sometimes content is wrapped inside .utility-padding or .rich-text
-      const innerDiv = contentEl.querySelector('.rich-text, .utility-padding-all-1rem, div');
-      if (innerDiv) {
-        bodyContent = innerDiv;
+    // Content cell extraction
+    let contentCell;
+    const nav = item.querySelector('.accordion-content, .w-dropdown-list');
+    if (nav) {
+      // Look for a rich text container, fallback to nav itself
+      const rich = nav.querySelector('.rich-text, .w-richtext');
+      if (rich) {
+        contentCell = rich;
+      } else {
+        // Try to use content wrapper div
+        const div = nav.querySelector('div');
+        contentCell = div ? div : nav;
       }
     } else {
-      // Fallback: .w-dropdown-list
-      bodyContent = acc.querySelector('.w-dropdown-list');
+      contentCell = item;
     }
-    // Defensive: If no content, use an empty element
-    if (!bodyContent) {
-      bodyContent = document.createElement('span');
-      bodyContent.textContent = '';
-    }
-
-    rows.push([titleEl, bodyContent]);
+    rows.push([titleCell, contentCell]);
   });
+  // Create table block and replace element
   const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

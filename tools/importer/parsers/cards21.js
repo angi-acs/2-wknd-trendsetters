@@ -1,54 +1,44 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header should match example exactly
+  // Header row matches the block spec
   const headerRow = ['Cards (cards21)'];
+  if (!element) return;
 
-  // Generalize to handle multiple cards (even if only one in this example)
-  // Find all descendant .card elements
-  const cardElements = element.querySelectorAll('.card');
-  const rows = [headerRow];
+  // Find the most specific card container
+  const cardBody = element.querySelector('.card-body') || element;
 
-  cardElements.forEach(cardEl => {
-    // Try to find the card body
-    const cardBody = cardEl.querySelector('.card-body') || cardEl;
-    // Find the image (mandatory)
-    const img = cardBody.querySelector('img');
-    // Find the heading (optional)
-    let heading = cardBody.querySelector('.h4-heading, h1, h2, h3, h4, h5, h6');
-    // Find description (optional):
-    // Description is any <p>, or any sibling after heading, excluding image
-    let description = null;
-    if (heading) {
-      let next = heading.nextElementSibling;
-      while (next) {
-        if (next.tagName.toLowerCase() !== 'img') {
-          description = next;
-          break;
-        }
-        next = next.nextElementSibling;
-      }
-    } else {
-      // If no heading, try to find a <p> or any non-image element
-      let possible = Array.from(cardBody.children).find(el => el.tagName.toLowerCase() !== 'img');
-      if (possible) description = possible;
-    }
-    // Compose text cell
-    const textCell = [];
-    if (heading) textCell.push(heading);
-    if (description) {
-      // Add line break between heading and description only if both exist and
-      // description is not just whitespace or duplicate of heading
-      if (heading) textCell.push(document.createElement('br'));
-      textCell.push(description);
-    }
-    // If neither heading nor description, ensure cell is not empty
-    if (!textCell.length) textCell.push('');
+  // Extract image (mandatory)
+  const imgEl = cardBody.querySelector('img');
+  if (!imgEl) return;
 
-    // Build row: [image, text cell]
-    rows.push([img, textCell]);
+  // Extract heading/title (mandatory)
+  const titleEl = cardBody.querySelector('.h4-heading, h1, h2, h3, h4, h5, h6');
+  if (!titleEl) return;
+
+  // Find any description/body text nodes: all elements except heading and image
+  const descriptionNodes = [];
+  cardBody.childNodes.forEach((node) => {
+    // Skip heading and image
+    if (node === titleEl || node === imgEl) return;
+    // Skip empty text nodes
+    if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) return;
+    descriptionNodes.push(node);
   });
 
-  // Create table and replace original element
-  const block = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(block);
+  // Compose second cell: heading + description nodes (if present)
+  let secondCell;
+  if (descriptionNodes.length > 0) {
+    // Combine heading and description into a fragment
+    const frag = document.createDocumentFragment();
+    frag.appendChild(titleEl);
+    descriptionNodes.forEach((node) => frag.appendChild(node));
+    secondCell = frag;
+  } else {
+    secondCell = titleEl;
+  }
+
+  // Compose block table rows
+  const rows = [headerRow, [imgEl, secondCell]];
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(table);
 }

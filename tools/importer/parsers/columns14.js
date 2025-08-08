@@ -1,28 +1,39 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // The block name is always a single-cell header row
-  const headerRow = ['Columns (columns14)'];
+  // 1. Find grid structure (columns)
+  const grid = element.querySelector('.w-layout-grid');
+  if (!grid) return;
+  const cols = Array.from(grid.children);
 
-  // Find the grid layout that represents the columns
-  const grid = element.querySelector('.grid-layout');
-  let contentRow = [];
+  // 2. Prepare content for each column
+  const columnCells = cols.map(col => {
+    // For container columns (divs), include their children if present
+    if (col.children.length > 0) {
+      return Array.from(col.children);
+    }
+    // Otherwise, include the column element itself
+    return [col];
+  });
 
-  if (grid) {
-    // Each immediate child of grid is a column
-    const gridChildren = Array.from(grid.children);
-    // Populate the content row with each column
-    contentRow = gridChildren;
-  } else {
-    // Fallback: treat immediate children of element as columns
-    contentRow = Array.from(element.children);
-  }
-
-  // Table: header row (single cell), content row (multiple columns)
+  // 3. Create header row: a single cell spanning all columns
+  // We'll create a <th> with colspan set below manually, since createTable doesn't handle colspan
+  // So we build the table, then fix the header cell after
   const cells = [
-    headerRow,
-    contentRow,
+    ['Columns (columns14)'],
+    columnCells
   ];
 
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+
+  // 4. Fix header cell to span all columns
+  const headerRow = table.querySelector('tr:first-child');
+  if (headerRow) {
+    const th = headerRow.querySelector('th');
+    if (th) {
+      th.setAttribute('colspan', columnCells.length);
+    }
+  }
+
+  // 5. Replace original element
+  element.replaceWith(table);
 }

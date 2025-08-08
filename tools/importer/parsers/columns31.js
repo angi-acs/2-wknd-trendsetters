@@ -1,25 +1,19 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Find the grid container (the one with columns)
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
-  
-  // 2. Collect all immediate column children
-  const columns = Array.from(grid.children);
-  if (columns.length === 0) return;
-
-  // 3. Compose the cells array for createTable
-  // Header row must match exactly the block name variant
+  // Header row: must be a single cell array for correct spanning
   const headerRow = ['Columns (columns31)'];
-  // Second row: one cell per column, each referencing the full column node
-  const contentRow = columns.map(col => col);
 
-  const cells = [
-    headerRow,
-    contentRow
-  ];
+  // Find the grid layout containing columns
+  let grid = element.querySelector('.grid-layout');
+  if (!grid) grid = element;
 
-  // 4. Create and insert the table block
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  // Each direct child is a column
+  const columns = Array.from(grid.children);
+
+  // Compose table: header row is a single array, second row is columns
+  const cells = [headerRow, columns];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+
+  // Replace the original element with the new table
+  element.replaceWith(table);
 }

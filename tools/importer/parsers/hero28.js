@@ -1,53 +1,37 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Table header row exactly as required
+  // 1. Header row as required by the block spec
   const headerRow = ['Hero (hero28)'];
 
-  // 2. Extract background image: usually one prominent img inside a parallax/hero wrapper
-  let bgImg = element.querySelector('.ix-parallax-scale-out-hero img');
-  let bgImgRow;
-  if (bgImg) {
-    bgImgRow = [bgImg];
-  } else {
-    bgImgRow = ['']; // empty if no image
-  }
-
-  // 3. Extract headline and sub-elements (title, subheading, CTA)
-  // The heading is an h1 inside .utility-margin-bottom-6rem
-  let contentCellElements = [];
-  let container = element.querySelector('.container');
-  if (container) {
-    // Find the heading
-    let headingWrapper = container.querySelector('.utility-margin-bottom-6rem');
-    if (headingWrapper) {
-      // Get all direct children of headingWrapper
-      headingWrapper.childNodes.forEach(node => {
-        // Only append Element nodes (h1, button group, etc)
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          // For the button group, only append its children (likely links or buttons)
-          if (node.classList.contains('button-group')) {
-            node.childNodes.forEach(btnNode => {
-              if (btnNode.nodeType === Node.ELEMENT_NODE) contentCellElements.push(btnNode);
-            });
-          } else {
-            contentCellElements.push(node);
-          }
-        }
-      });
+  // 2. Extract the background image (optional)
+  // The relevant <img> is inside the first .w-layout-grid > div
+  let backgroundImgEl = null;
+  const grid = element.querySelector(':scope > .w-layout-grid');
+  if (grid) {
+    const firstDiv = grid.children[0];
+    if (firstDiv) {
+      const img = firstDiv.querySelector('img');
+      if (img) {
+        backgroundImgEl = img;
+      }
     }
   }
-  // If no content found, ensure empty cell
-  if (contentCellElements.length === 0) {
-    contentCellElements = [''];
-  }
-  let contentRow = [contentCellElements.length === 1 ? contentCellElements[0] : contentCellElements];
+  const imageRow = [backgroundImgEl || ''];
 
-  // 4. Compose final table
-  const cells = [
-    headerRow,
-    bgImgRow,
-    contentRow
-  ];
+  // 3. Extract the headline and content (title, etc)
+  // In the second .w-layout-grid > div (the container)
+  let textContentDiv = null;
+  if (grid) {
+    const secondDiv = grid.children[1];
+    if (secondDiv) {
+      // The content is the whole second container div
+      textContentDiv = secondDiv;
+    }
+  }
+  const textRow = [textContentDiv || ''];
+
+  // 4. Compose the table for the block
+  const cells = [headerRow, imageRow, textRow];
   const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

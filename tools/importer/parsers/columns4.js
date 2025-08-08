@@ -1,21 +1,37 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get all immediate child columns (these are the divs inside the grid)
-  const columnDivs = Array.from(element.children);
-  const colCount = columnDivs.length;
-
-  // The header row should be a single cell, matching the example exactly
+  // Block name header, exactly as required
   const headerRow = ['Columns (columns4)'];
 
-  // The second row must have as many columns as columnDivs
-  const contentRow = columnDivs.map(col => col);
+  // Get direct children: these are the columns
+  const columnDivs = Array.from(element.querySelectorAll(':scope > div'));
 
-  // Compose the table structure
-  const cells = [headerRow, contentRow];
+  // Edge case: if no columns found, just output header
+  if (columnDivs.length === 0) {
+    const table = WebImporter.DOMUtils.createTable([headerRow], document);
+    element.replaceWith(table);
+    return;
+  }
 
-  // Create the table block
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  
-  // Replace the original element
+  // Each column: if it is a wrapper for a single image, just use the image
+  // Otherwise, use the column div itself
+  const columns = columnDivs.map(col => {
+    // Use the first child (typically the image) if only one child
+    if (col.children.length === 1 && col.firstElementChild.tagName.toLowerCase() === 'img') {
+      return col.firstElementChild;
+    }
+    // Otherwise, use the column div itself
+    return col;
+  });
+
+  // Compose table with header and one row of columns
+  const tableCells = [
+    headerRow,
+    columns
+  ];
+
+  const table = WebImporter.DOMUtils.createTable(tableCells, document);
+
+  // Replace original element
   element.replaceWith(table);
 }

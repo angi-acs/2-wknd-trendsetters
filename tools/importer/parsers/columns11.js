@@ -1,32 +1,33 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row: must be a single cell
-  const headerRow = ['Columns (columns11)'];
-
-  // Find the main container
+  // Find the main grid that holds the two top columns
   const container = element.querySelector('.container');
-  // Top grid: left (headline), right (body)
-  const topGrid = container.querySelector('.grid-layout.tablet-1-column');
-  const leftCol = topGrid.children[0];
-  const rightCol = topGrid.children[1];
+  if (!container) return;
 
-  // Bottom grid: two images
-  const bottomGrid = element.querySelector('.w-layout-grid.grid-layout.mobile-portrait-1-column');
-  const bottomCells = Array.from(bottomGrid ? bottomGrid.children : []);
-  // Ensure two columns in bottom row
-  const secondContentRow = [
-    bottomCells[0] || document.createElement('div'),
-    bottomCells[1] || document.createElement('div')
-  ];
+  const mainGrid = container.querySelector('.w-layout-grid.grid-layout.tablet-1-column');
+  if (!mainGrid) return;
+  // Grids may use direct children
+  const gridChildren = Array.from(mainGrid.children);
 
-  // First content row (two columns)
-  const firstContentRow = [leftCol, rightCol];
+  // Left/top column (title area)
+  const leftCol = gridChildren[0];
+  // Right/top column (description and author)
+  const rightCol = gridChildren[1];
 
-  // Compose table: header row is single column, then rows with two columns
+  // Find the images grid for the bottom row
+  const imagesGrid = element.querySelector('.w-layout-grid.grid-layout.mobile-portrait-1-column');
+  let img1 = null, img2 = null;
+  if (imagesGrid) {
+    const imgDivs = imagesGrid.querySelectorAll('img');
+    img1 = imgDivs[0] || '';
+    img2 = imgDivs[1] || '';
+  }
+
+  // Compose the block table as in the example
   const cells = [
-    headerRow, // single-cell header row
-    firstContentRow,
-    secondContentRow
+    ['Columns (columns11)'],
+    [leftCol, rightCol],
+    [img1, img2]
   ];
 
   const table = WebImporter.DOMUtils.createTable(cells, document);

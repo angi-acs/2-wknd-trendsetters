@@ -1,24 +1,24 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid columns
-  const container = element.querySelector('.container');
-  if (!container) return;
-  const grid = container.querySelector('.w-layout-grid');
+  // 1. Header row exactly as specified
+  const headerRow = ['Columns (columns9)'];
+
+  // 2. Find the grid layout container
+  const grid = element.querySelector('.w-layout-grid');
   if (!grid) return;
 
-  // Get all columns (direct children of the grid)
-  const columns = Array.from(grid.children).filter(child => child.nodeType === 1);
+  // 3. Get immediate children of the grid (the columns)
+  const columns = Array.from(grid.children);
 
-  // The columns block should have:
-  // - First row (header): single column with block name
-  // - Second row: one cell for each column (side by side)
-  // - No additional rows (unless there is more stacked content, which there is not in the provided HTML)
-  // This matches the example markdown structure for the footer block
-  const cells = [];
-  const headerRow = ['Columns (columns9)'];
-  cells.push(headerRow);
-  cells.push(columns);
+  // 4. If there are no columns, do nothing
+  if (columns.length === 0) return;
 
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  // 5. Compose a block table with one header row, one content row
+  const cells = [headerRow, columns];
+
+  // 6. Create the table block
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+
+  // 7. Replace the source element with the new block table
+  element.replaceWith(block);
 }
